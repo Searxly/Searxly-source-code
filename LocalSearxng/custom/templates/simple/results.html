@@ -1,0 +1,66 @@
+{% extends "simple/base.html" %}
+
+{% block title %}{% if query_in_title %}{{- q|e }} - {% endif %}{% endblock %}
+
+{% block content %}
+  <!-- The premium search bar (refine). Categories/tabs are rendered inside the form (see search.html). -->
+  {% include 'simple/search.html' %}
+
+  <div id="results" class="searxly-results {{ only_template }}">
+
+    {% if answers %}
+      <div class="searxly-answers" style="margin-bottom: var(--space-12, 48px);">
+        {% include 'simple/elements/answers.html' %}
+      </div>
+    {% endif %}
+
+    {% if corrections %}
+      <div class="searxly-corrections">
+        {% include 'simple/elements/corrections.html' %}
+      </div>
+    {% endif %}
+
+    <div id="urls" class="searxly-urls" role="main">
+      {% for result in results %}
+        {% if result.open_group %}<div class="template_group_{{ result['template']|replace('.html', '') }}">{% endif %}
+        {% include get_result_template('simple', result['template']) %}
+        {% if result.close_group %}</div>{% endif %}
+      {% endfor %}
+
+      {% if not results and not answers %}
+        <div class="searxly-empty">No results. Try a different query.</div>
+      {% endif %}
+    </div>
+
+    {% if paging %}
+    <nav id="pagination" class="searxly-pagination" role="navigation">
+      {% if pageno > 1 %}
+        <form method="{{ method or 'POST' }}" action="{{ url_for('search') }}" class="previous_page">
+          <input type="hidden" name="q" value="{{ q|e }}">
+          {% for category in selected_categories %}<input type="hidden" name="category_{{ category }}" value="1">{% endfor %}
+          <input type="hidden" name="pageno" value="{{ pageno-1 }}">
+          <input type="hidden" name="language" value="{{ current_language }}">
+          <input type="hidden" name="time_range" value="{{ time_range }}">
+          <input type="hidden" name="safesearch" value="{{ safesearch }}">
+          <input type="hidden" name="theme" value="{{ theme }}">
+          <button type="submit">← Previous</button>
+        </form>
+      {% endif %}
+
+      {% if results | count > 0 %}
+        <form method="{{ method or 'POST' }}" action="{{ url_for('search') }}" class="next_page">
+          <input type="hidden" name="q" value="{{ q|e }}">
+          {% for category in selected_categories %}<input type="hidden" name="category_{{ category }}" value="1">{% endfor %}
+          <input type="hidden" name="pageno" value="{{ pageno+1 }}">
+          <input type="hidden" name="language" value="{{ current_language }}">
+          <input type="hidden" name="time_range" value="{{ time_range }}">
+          <input type="hidden" name="safesearch" value="{{ safesearch }}">
+          <input type="hidden" name="theme" value="{{ theme }}">
+          <button type="submit">Next →</button>
+        </form>
+      {% endif %}
+    </nav>
+    {% endif %}
+
+  </div>
+{% endblock %}

@@ -1,0 +1,539 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BF1E14582FE07FB70064DE5C /* SearxlyDockerHelper.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = BF1E144D2FE07FB70064DE5C /* SearxlyDockerHelper.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BFA000030000000000000001 /* P256K in Frameworks */ = {isa = PBXBuildFile; productRef = BFA000020000000000000001 /* P256K */; };
+		BFA000050000000000000001 /* libsecp256k1 in Frameworks */ = {isa = PBXBuildFile; productRef = BFA000040000000000000001 /* libsecp256k1 */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BF1E14562FE07FB70064DE5C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BF13CDA62FC3421E0081D8C8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF1E144C2FE07FB70064DE5C;
+			remoteInfo = SearxlyDockerHelper;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BF1E145D2FE07FB70064DE5C /* Embed XPC Services */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";
+			dstSubfolder = Product;
+			files = (
+				BF1E14582FE07FB70064DE5C /* SearxlyDockerHelper.xpc in Embed XPC Services */,
+			);
+			name = "Embed XPC Services";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		BF13CDAE2FC3421E0081D8C8 /* Searxly.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Searxly.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF1E144D2FE07FB70064DE5C /* SearxlyDockerHelper.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = SearxlyDockerHelper.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BF1E14592FE07FB70064DE5C /* Exceptions for "SearxlyDockerHelper" folder in "SearxlyDockerHelper" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BF1E144C2FE07FB70064DE5C /* SearxlyDockerHelper */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		BF13CDB02FC3421E0081D8C8 /* Searxly */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Searxly;
+			sourceTree = "<group>";
+		};
+		BF13CE082FC458470081D8C8 /* LocalSearxng */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LocalSearxng;
+			sourceTree = "<group>";
+		};
+		BF1E144E2FE07FB70064DE5C /* SearxlyDockerHelper */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BF1E14592FE07FB70064DE5C /* Exceptions for "SearxlyDockerHelper" folder in "SearxlyDockerHelper" target */,
+			);
+			path = SearxlyDockerHelper;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BF13CDAB2FC3421E0081D8C8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				BFA000030000000000000001 /* P256K in Frameworks */,
+				BFA000050000000000000001 /* libsecp256k1 in Frameworks */,
+			);
+		};
+		BF1E144A2FE07FB70064DE5C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BF13CDA52FC3421E0081D8C8 = {
+			isa = PBXGroup;
+			children = (
+				BF13CE082FC458470081D8C8 /* LocalSearxng */,
+				BF13CDB02FC3421E0081D8C8 /* Searxly */,
+				BF1E144E2FE07FB70064DE5C /* SearxlyDockerHelper */,
+				BF13CDAF2FC3421E0081D8C8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BF13CDAF2FC3421E0081D8C8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BF13CDAE2FC3421E0081D8C8 /* Searxly.app */,
+				BF1E144D2FE07FB70064DE5C /* SearxlyDockerHelper.xpc */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BF13CDAD2FC3421E0081D8C8 /* Searxly */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF13CDB92FC3421F0081D8C8 /* Build configuration list for PBXNativeTarget "Searxly" */;
+			buildPhases = (
+				BF13CDAA2FC3421E0081D8C8 /* Sources */,
+				BF13CDAB2FC3421E0081D8C8 /* Frameworks */,
+				BF13CDAC2FC3421E0081D8C8 /* Resources */,
+				BF1E145D2FE07FB70064DE5C /* Embed XPC Services */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BF1E14572FE07FB70064DE5C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				BF13CDB02FC3421E0081D8C8 /* Searxly */,
+				BF13CE082FC458470081D8C8 /* LocalSearxng */,
+			);
+			name = Searxly;
+			packageProductDependencies = (
+				BFA000020000000000000001 /* P256K */,
+				BFA000040000000000000001 /* libsecp256k1 */,
+			);
+			productName = Searxly;
+			productReference = BF13CDAE2FC3421E0081D8C8 /* Searxly.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BF1E144C2FE07FB70064DE5C /* SearxlyDockerHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF1E145A2FE07FB70064DE5C /* Build configuration list for PBXNativeTarget "SearxlyDockerHelper" */;
+			buildPhases = (
+				BF1E14492FE07FB70064DE5C /* Sources */,
+				BF1E144A2FE07FB70064DE5C /* Frameworks */,
+				BF1E144B2FE07FB70064DE5C /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				BF1E144E2FE07FB70064DE5C /* SearxlyDockerHelper */,
+			);
+			name = SearxlyDockerHelper;
+			productName = SearxlyDockerHelper;
+			productReference = BF1E144D2FE07FB70064DE5C /* SearxlyDockerHelper.xpc */;
+			productType = "com.apple.product-type.xpc-service";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BF13CDA62FC3421E0081D8C8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					BF13CDAD2FC3421E0081D8C8 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					BF1E144C2FE07FB70064DE5C = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = BF13CDA92FC3421E0081D8C8 /* Build configuration list for PBXProject "Searxly" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				fr,
+			);
+			mainGroup = BF13CDA52FC3421E0081D8C8;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */,
+			);
+			preferredProjectObjectVersion = 110;
+			productRefGroup = BF13CDAF2FC3421E0081D8C8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BF13CDAD2FC3421E0081D8C8 /* Searxly */,
+				BF1E144C2FE07FB70064DE5C /* SearxlyDockerHelper */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BF13CDAC2FC3421E0081D8C8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		BF1E144B2FE07FB70064DE5C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BF13CDAA2FC3421E0081D8C8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		BF1E14492FE07FB70064DE5C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BF1E14572FE07FB70064DE5C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF1E144C2FE07FB70064DE5C /* SearxlyDockerHelper */;
+			targetProxy = BF1E14562FE07FB70064DE5C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		BF13CDB72FC3421F0081D8C8 /* Debug configuration for PBXProject "Searxly" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		BF13CDB82FC3421F0081D8C8 /* Release configuration for PBXProject "Searxly" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		BF13CDBA2FC3421F0081D8C8 /* Debug configuration for PBXNativeTarget "Searxly" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Searxly/Searxly.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Searxly uses Touch ID and your Mac login password to lock the browser and protect your private search data and settings.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LSMinimumSystemVersion = 26.0;
+				MARKETING_VERSION = 0.9;
+				PRODUCT_BUNDLE_IDENTIFIER = com.myrhex.Searxly;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BF13CDBB2FC3421F0081D8C8 /* Release configuration for PBXNativeTarget "Searxly" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Searxly/Searxly.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Searxly uses Touch ID and your Mac login password to lock the browser and protect your private search data and settings.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LSMinimumSystemVersion = 26.0;
+				MARKETING_VERSION = 0.9;
+				PRODUCT_BUNDLE_IDENTIFIER = com.myrhex.Searxly;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		BF1E145B2FE07FB70064DE5C /* Debug configuration for PBXNativeTarget "SearxlyDockerHelper" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SearxlyDockerHelper/SearxlyDockerHelper.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SearxlyDockerHelper/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SearxlyDockerHelper;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.myrhex.SearxlyDockerHelper;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BF1E145C2FE07FB70064DE5C /* Release configuration for PBXNativeTarget "SearxlyDockerHelper" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SearxlyDockerHelper/SearxlyDockerHelper.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SearxlyDockerHelper/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SearxlyDockerHelper;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.myrhex.SearxlyDockerHelper;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BF13CDA92FC3421E0081D8C8 /* Build configuration list for PBXProject "Searxly" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF13CDB72FC3421F0081D8C8 /* Debug configuration for PBXProject "Searxly" */,
+				BF13CDB82FC3421F0081D8C8 /* Release configuration for PBXProject "Searxly" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		BF13CDB92FC3421F0081D8C8 /* Build configuration list for PBXNativeTarget "Searxly" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF13CDBA2FC3421F0081D8C8 /* Debug configuration for PBXNativeTarget "Searxly" */,
+				BF13CDBB2FC3421F0081D8C8 /* Release configuration for PBXNativeTarget "Searxly" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		BF1E145A2FE07FB70064DE5C /* Build configuration list for PBXNativeTarget "SearxlyDockerHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF1E145B2FE07FB70064DE5C /* Debug configuration for PBXNativeTarget "SearxlyDockerHelper" */,
+				BF1E145C2FE07FB70064DE5C /* Release configuration for PBXNativeTarget "SearxlyDockerHelper" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.17.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BFA000020000000000000001 /* P256K */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */;
+			productName = P256K;
+		};
+		BFA000040000000000000001 /* libsecp256k1 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */;
+			productName = libsecp256k1;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = BF13CDA62FC3421E0081D8C8 /* Project object */;
+}

@@ -1,0 +1,25 @@
+Searxly QA Build - How to Open on macOS
+
+This .dmg was built without a paid Apple Developer ID + notarization 
+(so no "clean" double-click experience yet).
+
+Gatekeeper will warn on other Macs. This is expected and the app is safe.
+
+How to open the app (easiest method):
+
+1. Double-click the .dmg to mount it
+2. Drag the Searxly-QA-....app into your Applications folder
+3. In Finder, RIGHT-CLICK (two-finger click or Control-click) the app
+4. Choose "Open" from the menu
+5. In the warning dialog that appears, click "Open"
+
+After doing this once, it should open normally in the future.
+
+Alternative (if right-click "Open" option doesn't show):
+- Open Terminal and run:
+  xattr -cr "/Applications/Searxly-QA-....app"
+- Then launch the app normally.
+
+You only need to do the right-click / xattr step the very first time you run this build.
+
+Thanks for helping test! Report any issues back to the person who sent you the build.

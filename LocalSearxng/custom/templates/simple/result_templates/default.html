@@ -1,0 +1,15 @@
+{# Minimal clean result template for the premium Searxly theme.
+   We deliberately output very little markup so the CSS can deliver
+   the luxurious stacked typography treatment with zero visual clutter. #}
+
+<div class="searxly-result result">
+  <div class="title">
+    <a class="result-link" href="{{ result.url }}" rel="noreferrer" target="_blank">{{ result.title|safe }}</a>
+  </div>
+
+  <div class="url">{{ result.parsed_url.netloc }}</div>
+
+  {% if result.content %}
+  <div class="content">{{ result.content|safe }}</div>
+  {% endif %}
+</div>

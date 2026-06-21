@@ -1,0 +1,1 @@
+../../../../Searxly/Wallet/BIP39.swift

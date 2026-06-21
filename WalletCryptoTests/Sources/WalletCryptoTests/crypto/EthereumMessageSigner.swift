@@ -1,0 +1,1 @@
+../../../../Searxly/Wallet/EthereumMessageSigner.swift

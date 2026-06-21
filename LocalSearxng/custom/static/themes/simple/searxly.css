@@ -1,0 +1,734 @@
+/*
+  Searxly Premium Web Theme — xAI / Grok / SpaceX inspired
+  Stark monochrome (grey/black/white), extreme minimalism, massive breathing room.
+  No colored accents. Luxury through typography, rhythm, and restraint.
+
+  This stylesheet is loaded from the custom static path and wins on presentation
+  while the existing sxng-core JS and minimal core styles handle behavior.
+*/
+
+:root {
+  /* Pure xAI/SpaceX monochrome palette */
+  --bg: #0a0a0a;
+  --bg-elev: #111111;
+  --bg-elev-2: #181818;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #666666;
+  --text-tiny: #525252;
+  --accent: #e5e5e5;        /* only for the subtlest interactive lift — no hue */
+  --accent-strong: #f5f5f5;
+  --border-subtle: #222222;
+  --border-focus: #ffffff30;
+  --focus-glow: #ffffff18;
+
+  /* Generous 8px spacing scale for luxurious breathing room */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Razor-sharp modern typography */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Inter",
+               "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+/* Base reset for the SearXNG simple theme container */
+html, body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+/* Remove any default SearXNG chrome we don't want */
+#links_on_top,
+footer,
+#sidebar,
+#engines_msg,
+.apis,
+#backToTop {
+  display: none !important;
+}
+
+/* .search_filters is no longer globally hidden — we provide a premium styled version
+   via .searxly-categories on the results page (xAI/SpaceX minimal aesthetic). */
+.search_filters {
+  display: none !important; /* fallback safety */
+}
+
+/* ============================================
+   SLIM ELEGANT TOP NAV (we provide our own via base.html override)
+   ============================================ */
+.searxly-nav {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-12);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 50;
+  background: var(--bg);
+}
+
+.searxly-nav .logo {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 14.5px;
+}
+
+.searxly-nav .nav-right a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.searxly-nav .nav-right a:hover {
+  color: var(--text-primary);
+  background: var(--bg-elev);
+}
+
+/* ============================================
+   PREMIUM WIDE FLOATING SEARCH BAR
+   ============================================ */
+#search,
+.searxly-search-form {
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Aggressively kill any outer "bubble/glass" wrapper the core sxng theme
+   applies around the search bar + autocomplete suggestions.
+   This prevents the massive rounded container the user is seeing. */
+#search,
+#search_header,
+#search_view,
+.search_box:not(.searxly-search-box),
+.searxly-search-form,
+form#search {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+/* Specifically kill the big rounded suggestions panel / "Search for X" bubble
+   that the modern simple theme renders (visible in the screenshot with the
+   "Search for "test"" line and "SearXNG" badge). */
+#search [class*="suggestion"],
+#search .suggestions,
+#search .search-suggestions,
+#search .autocomplete-results,
+#search .search-for,
+#search [class*="search-for"],
+#search .searxng-badge,
+#search .engine-badge,
+#search .suggestion-header,
+#search .suggestions-header,
+#search .search-header,
+[class*="suggestion"]:not(.searxly-search-box),
+.suggestions:not(.searxly-search-box) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Hide the "Search for "test"" header line and the SearXNG branding pill */
+#search .search-for,
+#search [class*="search-for"],
+#search .searxng-badge,
+#search .engine-badge,
+#search .suggestion-header {
+  display: none !important;
+}
+
+/* Positioning wrapper for the search pill + dropdown (completely invisible) */
+.searxly-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Heroic version on home */
+.searxly-home .searxly-search-form {
+  max-width: 660px;
+  /* search bar now participates in vertical centering of the hero block */
+}
+
+.search_box,
+.searxly-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  height: 56px;
+  padding: 0 10px 0 22px;   /* extra right padding so buttons sit nicely inside */
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.search_box:focus-within,
+.searxly-search-box:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 4px var(--focus-glow);
+  background: var(--bg-elev-2);
+}
+
+/* Results page: more refined, slightly smaller, "floating" but in-flow.
+   Note: the refine search form sits before #results in DOM, so we also scope via body class. */
+.searxly-results .searxly-search-form,
+.search_endpoint .searxly-search-form,
+.results_endpoint .searxly-search-form {
+  max-width: 680px;
+  margin: 12px auto 0;   /* categories inside now provide the spacing before results */
+}
+
+.searxly-results .search_box,
+.searxly-results .searxly-search-box,
+.search_endpoint .search_box,
+.search_endpoint .searxly-search-box,
+.results_endpoint .search_box,
+.results_endpoint .searxly-search-box {
+  height: 46px;
+  padding: 0 8px 0 18px;   /* breathing room for the now-smaller buttons */
+  border-radius: 9999px;
+}
+
+#q,
+.searxly-search-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-primary);
+  padding: 0 8px 0 0;   /* reduced — buttons now handle the right spacing */
+  letter-spacing: -0.01em;
+}
+
+.searxly-results #q,
+.searxly-results .searxly-search-input,
+.search_endpoint #q,
+.search_endpoint .searxly-search-input,
+.results_endpoint #q,
+.results_endpoint .searxly-search-input {
+  font-size: 15px;
+}
+
+#q::placeholder,
+.searxly-search-input::placeholder {
+  color: var(--text-tiny);
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* Clear & submit buttons — subtle, minimal icons (no big floating circles) */
+#clear_search,
+#send_search,
+.searxly-search-actions button {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;           /* very subtle, not a big pill */
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  margin-left: 2px;
+  transition: color 120ms ease, background 120ms ease;
+  flex-shrink: 0;
+}
+
+/* Tighter on the shorter results-page bar */
+.searxly-results #clear_search,
+.searxly-results #send_search,
+.search_endpoint #clear_search,
+.search_endpoint #send_search,
+.results_endpoint #clear_search,
+.results_endpoint #send_search {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+
+#clear_search:hover,
+#send_search:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.06);
+}
+
+/* Make the clear × even lighter when idle */
+#clear_search {
+  opacity: 0.7;
+}
+
+#clear_search:hover {
+  opacity: 1;
+}
+
+/* Autocomplete dropdown — clean, dark, generous (isolated from any outer bubble) */
+.autocomplete,
+.searxly-autocomplete {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: var(--bg-elev) !important;
+  background-color: var(--bg-elev) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.7) !important;
+  overflow: hidden !important;
+  z-index: 100 !important;
+  font-size: 14px !important;
+  /* Ensure it never participates in any parent glass/bubble */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+.autocomplete ul,
+.searxly-autocomplete ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.autocomplete li,
+.searxly-autocomplete li {
+  padding: 11px 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 110ms ease, color 110ms ease;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.autocomplete li:last-child,
+.searxly-autocomplete li:last-child {
+  border-bottom: none;
+}
+
+.autocomplete li:hover,
+.searxly-autocomplete li:hover,
+.autocomplete li[aria-selected="true"],
+.searxly-autocomplete li[aria-selected="true"] {
+  background: var(--bg-elev-2);
+  color: var(--text-primary);
+}
+
+/* ============================================
+   PREMIUM MINIMAL CATEGORY TABS (xAI / SpaceX inspired)
+   Extreme restraint: monochrome, generous spacing, refined typography.
+   Active state is a subtle underline + weight lift — no loud pills or colors.
+   Tabs are now inside the search form (search.html) so buttons submit correctly.
+   ============================================ */
+.searxly-categories {
+  max-width: 720px;
+  margin: 8px auto 0;
+  padding: 0 4px;
+}
+
+/* When categories live inside the search form (results page refine bar), position right below the pill */
+.searxly-search-form .searxly-categories {
+  margin-top: 10px;
+  margin-bottom: 28px;   /* breathing room before the results list */
+}
+
+/* The flex container for the tab buttons (from our custom categories.html or stock) */
+.searxly-categories .categories,
+.searxly-categories form,
+.searxly-categories > div,
+.searxly-categories #categories_container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;                     /* premium, slightly generous horizontal rhythm */
+  font-size: 12.25px;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1.1;
+}
+
+/* Individual category tab buttons — clean text, no icons */
+.searxly-categories label,
+.searxly-categories a,
+.searxly-categories .category,
+.searxly-categories span,
+.searxly-categories button.category,
+.searxly-categories .searxly-cat-tab {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 3px 1px 4px;
+  transition: color 140ms ease, border-color 140ms ease;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font: inherit;
+}
+
+/* Hover lift */
+.searxly-categories label:hover,
+.searxly-categories a:hover,
+.searxly-categories .category:hover,
+.searxly-categories button.category:hover,
+.searxly-categories .searxly-cat-tab:hover {
+  color: var(--text-secondary);
+}
+
+/* Active / selected state — the only visual weight */
+.searxly-categories .active,
+.searxly-categories label.active,
+.searxly-categories .category.active,
+.searxly-categories input:checked ~ label,
+.searxly-categories input:checked + label,
+.searxly-categories .selected,
+.searxly-categories label[aria-selected="true"],
+.searxly-categories button.category.active,
+.searxly-categories .searxly-cat-tab.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--text-primary);
+  padding-bottom: 3px;
+}
+
+/* Hide the raw checkboxes and any noisy original wrappers (stock structure safety) */
+.searxly-categories input[type="checkbox"],
+.searxly-categories input[type="radio"] {
+  display: none !important;
+}
+
+/* Hide categories entirely on the home page (clean hero with only search bar) */
+.index_endpoint .searxly-categories,
+.searxly-home .searxly-categories,
+.searxly-home .search_categories {
+  display: none !important;
+}
+
+/* ============================================
+   HOME (INDEX) — HERO CENTERED (search bar in the middle)
+   ============================================ */
+.index,
+.searxly-home {
+  min-height: calc(100vh - 48px);    /* account for fixed slim nav */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;           /* centers the wordmark + tagline + search bar block vertically */
+  padding: 0 var(--space-8);
+  text-align: center;
+}
+
+.searxly-wordmark {
+  font-size: 29px;
+  font-weight: 600;
+  letter-spacing: -0.055em; /* premium, slightly more SpaceX-like tracking */
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+  user-select: none;
+}
+
+.searxly-home-tagline {
+  font-size: 12.5px;
+  color: var(--text-tiny);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 2rem;   /* tighter when hero block is centered; search bar now sits near middle */
+  font-weight: 500;
+}
+
+/* ============================================
+   RESULTS PAGE — EXTREME MINIMALISM + BREATHING ROOM
+   ============================================ */
+#results,
+.searxly-results {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-8) var(--space-16);
+}
+
+#urls,
+.searxly-urls {
+  /* Pure vertical stack — luxurious but not sparse */
+  display: flex;
+  flex-direction: column;
+  gap: 52px; /* refined sweet spot for breathing room */
+}
+
+/* === STRONG FLATTENING: Kill any "bubble glass" / card / elevated container effect === */
+/* This overrides leftover styles from sxng-*.css that can create frosted-glass or
+   raised bubbles around the entire results list or individual items in the modern simple theme. */
+#results,
+.searxly-results,
+#urls,
+.searxly-urls,
+main,
+#results > *,
+.searxly-results > *,
+#urls > *,
+.searxly-urls > * {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  outline: none !important;
+}
+
+/* Individual result — NO card, NO border, NO background, NO pill, NO favicon */
+.result,
+.searxly-result,
+article.result,
+div.result {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Large bold title — the hero of each result */
+.result h3,
+.result .result-title,
+.searxly-result .title,
+a.result-link {
+  font-size: 20.5px;
+  line-height: 1.32;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  margin: 0 0 5px 0;
+}
+
+.result h3 a,
+.result .result-title a,
+.searxly-result .title a,
+a.result-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 140ms ease, letter-spacing 160ms ease;
+}
+
+.result h3 a:hover,
+.result .result-title a:hover,
+.searxly-result .title a:hover {
+  color: var(--accent-strong);
+  letter-spacing: -0.005em; /* subtle premium lift on hover */
+}
+
+/* Clean tiny muted domain/URL — refined sans, no pills, no tags, no favicon */
+.result .url,
+.result .result-url,
+.searxly-result .url,
+.searxly-result .domain {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.015em;
+  margin-bottom: 7px;
+  opacity: 0.82;
+  font-family: var(--font-sans);
+}
+
+/* Crisp description */
+.result .content,
+.result .result-content,
+.result p,
+.searxly-result .snippet,
+.searxly-result .content {
+  font-size: 14.75px;
+  line-height: 1.68;
+  color: var(--text-secondary);
+  max-width: 70ch;
+  margin: 0;
+}
+
+/* Hide everything we explicitly do not want (per design spec) */
+.result .favicon,
+.result .engine,
+.result .result-engine,
+.result .label,
+.result .source,
+.result .meta,
+.result .thumbnail,
+.result .result-content .favicon {
+  display: none !important;
+}
+
+/* ============================================
+   PAGINATION — SLIM & ELEGANT
+   ============================================ */
+#pagination,
+.searxly-pagination {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-6);
+  margin-top: var(--space-20);
+  font-size: 13px;
+}
+
+#pagination button,
+#pagination input,
+.searxly-pagination button,
+.searxly-pagination a {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+#pagination button:hover,
+.searxly-pagination button:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+#pagination .page_number_current,
+.searxly-pagination .current {
+  background: var(--bg-elev);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ============================================
+   IMAGES / MEDIA (CLEAN LUXURY GRID)
+   ============================================ */
+#results.only_template_images .searxly-urls,
+.images .searxly-urls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 28px;
+}
+
+.searxly-result.image,
+.result.image {
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-subtle);
+  transition: transform 200ms cubic-bezier(0.23, 1.0, 0.32, 1), 
+              border-color 200ms ease,
+              box-shadow 200ms ease;
+}
+
+.searxly-result.image:hover,
+.result.image:hover {
+  transform: translateY(-1px);
+  border-color: #2a2a2a;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.searxly-result.image img,
+.result.image img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 5px;
+  transition: transform 280ms cubic-bezier(0.23, 1.0, 0.32, 1);
+}
+
+.searxly-result.image:hover img,
+.result.image:hover img {
+  transform: scale(1.015);
+}
+
+/* ============================================
+   MISC — CORRECTIONS, EMPTY STATES, ETC.
+   ============================================ */
+.corrections,
+.searxly-corrections {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-8);
+}
+
+.no-results,
+.searxly-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-tiny);
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
+}
+
+/* Subtle focus visible for everything interactive */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Responsive adjustments for smaller viewports */
+@media (max-width: 720px) {
+  .searxly-nav {
+    padding: 0 var(--space-6);
+  }
+  #results,
+  .searxly-results {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+  .search_box,
+  .searxly-search-box {
+    height: 52px;
+    border-radius: 14px; /* slightly sharper on mobile */
+  }
+}
+
+

@@ -1,0 +1,27 @@
+<form id="search" class="searxly-search-form" method="{{ method or 'POST' }}" action="{{ url_for('search') }}" role="search">
+  <!-- Wrapper provides clean relative positioning context for the dropdown
+       without any visual styles (no background, no radius) so nothing creates
+       a "massive round bubble" around the bar + suggestions. -->
+  <div class="searxly-search-wrapper">
+    <div class="searxly-search-box">
+      <input id="q" class="searxly-search-input" name="q" type="text"
+             placeholder="Search privately"
+             tabindex="1" autocomplete="off" autocapitalize="none" spellcheck="false"
+             autocorrect="off" dir="auto" value="{{ q or '' }}">
+
+      <button id="clear_search" type="reset" aria-label="Clear" class="hide_if_nojs">×</button>
+      <button id="send_search" type="submit" aria-label="Search">→</button>
+    </div>
+
+    <div class="autocomplete hide_if_nojs"><ul></ul></div>
+  </div>
+
+  <!-- Categories (tabs: All, Images, Videos, ...) now inside the form for correct submit behavior.
+       Hidden via CSS on the home/index page; visible on results page below the compact bar. -->
+  <div class="searxly-categories">
+    {% include 'simple/categories.html' %}
+  </div>
+
+  <input type="hidden" name="theme" value="{{ theme }}">
+  {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}">{% endif %}
+</form>

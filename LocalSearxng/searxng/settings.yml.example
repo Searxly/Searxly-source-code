@@ -1,0 +1,1270 @@
+general:
+  # Debug mode, only for development. Is overwritten by ${SEARXNG_DEBUG}
+  debug: false
+  # displayed name
+  instance_name: "Searxly"
+  # For example: https://example.com/privacy
+  privacypolicy_url: false
+  # use true to use your own donation page written in searx/info/en/donate.md
+  # use false to disable the donation link
+  donation_url: false
+  # mailto:contact@example.com
+  contact_url: false
+  # record stats
+  enable_metrics: false
+  # expose stats in open metrics format at /metrics
+  # leave empty to disable (no password set)
+  # open_metrics: <password>
+  open_metrics: ''
+
+brand:
+  docs_url: https://docs.searxng.org/
+  public_instances: https://searx.space
+  wiki_url: https://github.com/searxng/searxng/wiki
+  issue_url: https://github.com/searxng/searxng/issues
+  # custom:
+  #   # Custom entries in the footer: [title]: [link]
+  #   links:
+  #     Uptime: https://uptime.searxng.org/history/darmarit-org
+  #     About: "https://searxng.org"
+  # pwa_colors:
+  #   # Custom settings for PWA icon an colors used in manifest.json
+  #   # Default colors are:
+  #    theme_color_light: "#3050ff"
+  #    background_color_light: "fff"
+  #    theme_color_dark: "#58f"
+  #    background_color_dark: "#222428"
+  #    theme_color_black: "#3050ff"
+  #    background_color_black: "#000"
+
+search:
+  # Filter results. 0: None, 1: Moderate, 2: Strict
+  safe_search: 0
+  # Existing autocomplete backends: "360search", "baidu", "bing", "brave", "dbpedia", "duckduckgo", "google",
+  # "yandex", "mwmbl", "naver", "seznam", "sogou", "startpage", "swisscows", "quark", "qwant", "wikipedia" -
+  # leave blank to turn it off by default.
+  autocomplete: ""
+  # minimun characters to type before autocompleter starts
+  autocomplete_min: 4
+  # backend for the favicon near URL in search results.
+  # Available resolvers: "allesedv", "duckduckgo", "google", "yandex" - leave blank to turn it off by default.
+  favicon_resolver: ""
+  # Default search language - leave blank to detect from browser information or
+  # use codes from 'languages.py'
+  default_lang: "auto"
+  # max_page: 0  # if engine supports paging, 0 means unlimited numbers of pages
+  # Available languages
+  # languages:
+  #   - all
+  #   - en
+  #   - en-US
+  #   - de
+  #   - it-IT
+  #   - fr
+  #   - fr-BE
+  # ban time in seconds after engine errors
+  ban_time_on_fail: 5
+  # max ban time in seconds after engine errors
+  max_ban_time_on_fail: 120
+  suspended_times:
+    # Engine suspension time after error (in seconds; set to 0 to disable)
+    # For error "Access denied" and "HTTP error [402, 403]"
+    SearxEngineAccessDenied: 180
+    # For error "CAPTCHA"
+    SearxEngineCaptcha: 3600
+    # For error "Too many request" and "HTTP error 429"
+    SearxEngineTooManyRequests: 180
+    # Cloudflare CAPTCHA
+    cf_SearxEngineCaptcha: 1296000
+    cf_SearxEngineAccessDenied: 86400
+    # ReCAPTCHA
+    recaptcha_SearxEngineCaptcha: 604800
+
+  # remove format to deny access, use lower case.
+  # formats: [html, csv, json, rss]
+  formats:
+    - html
+    - json
+
+server:
+  # Is overwritten by ${SEARXNG_PORT} and ${SEARXNG_BIND_ADDRESS}
+  # For the local Docker setup we publish :8080 from the host and bind to all interfaces inside the container.
+  port: 8080
+  bind_address: "0.0.0.0"
+  # public URL of the instance, to ensure correct inbound links. Is overwritten
+  # by ${SEARXNG_BASE_URL}.
+  base_url: false  # "http://example.com/location"
+  # rate limit the number of request on the instance, block some bots.
+  # Is overwritten by ${SEARXNG_LIMITER}
+  limiter: false
+  # enable features designed only for public instances.
+  # Is overwritten by ${SEARXNG_PUBLIC_INSTANCE}
+  public_instance: false
+
+  # If your instance owns a /etc/searxng/settings.yml file, then set the following
+  # values there.
+
+  # ============================================================
+  # SANITIZED TEMPLATE FOR OPEN SOURCE / PUBLIC REPO
+  # Replace secret_key with your own strong random value BEFORE first use.
+  # Generate a good one with:   openssl rand -hex 32
+  # Never commit a real key. The app and Docker expect a file named settings.yml
+  # with a real key at runtime (the one-click setup copies from this .example).
+  # ============================================================
+  secret_key: "YOUR_SECRET_KEY_HERE"  # Is overwritten by ${SEARXNG_SECRET}
+  # Proxy image results through SearXNG. Is overwritten by ${SEARXNG_IMAGE_PROXY}
+  # Enabled so that Images/Videos tabs get usable (proxied) thumbnails without the client
+  # making direct requests to third-party image hosts (better privacy + works in "private by default" mode).
+  image_proxy: true
+  # 1.0 and 1.1 are supported
+  http_protocol_version: "1.0"
+  # POST queries are "more secure!" but are also the source of hard-to-locate
+  # annoyances, which is why GET may be better for end users and their browsers.
+  # see https://github.com/searxng/searxng/pull/3619
+  # Is overwritten by ${SEARXNG_METHOD}
+  method: "POST"
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
+
+valkey:
+  # URL to connect valkey database. Is overwritten by ${SEARXNG_VALKEY_URL}.
+  # https://docs.searxng.org/admin/settings/settings_valkey.html#settings-valkey
+  # url: valkey://localhost:6379/0
+  url: false
+
+ui:
+  # Custom static path - points to our premium xAI/SpaceX-inspired Searxly theme
+  static_path: "/etc/searxng/custom/static"
+  # Custom templates path - overrides for the simple theme delivering the luxurious minimal redesign
+  templates_path: "/etc/searxng/custom/templates"
+  # query_in_title: When true, the result page's titles contains the query
+  # it decreases the privacy, since the browser can records the page titles.
+  query_in_title: false
+  # ui theme
+  default_theme: simple
+  # center the results ?
+  center_alignment: false
+  # URL prefix of the internet archive, don't forget trailing slash (if needed).
+  # cache_url: "https://webcache.googleusercontent.com/search?q=cache:"
+  # Default interface locale - leave blank to detect from browser information or
+  # use codes from the 'locales' config section
+  default_locale: ""
+  # Open result links in a new tab by default
+  # results_on_new_tab: false
+  theme_args:
+    # style of simple theme: auto, light, dark, black
+    simple_style: dark
+  # Perform search immediately if a category selected.
+  # Disable to select multiple categories at once and start the search manually.
+  search_on_category_select: true
+  # Hotkeys: default or vim
+  hotkeys: default
+  # URL formatting: pretty, full or host
+  url_formatting: pretty
+
+# Lock arbitrary settings on the preferences page.
+#
+# preferences:
+#   lock:
+#     - categories
+#     - language
+#     - autocomplete
+#     - favicon
+#     - safesearch
+#     - method
+#     - doi_resolver
+#     - locale
+#     - theme
+#     - results_on_new_tab
+#     - search_on_category_select
+#     - method
+#     - image_proxy
+#     - query_in_title
+
+# communication with search engines
+#
+outgoing:
+  # default timeout in seconds, can be override by engine
+  request_timeout: 3.0
+  # the maximum timeout in seconds
+  # max_request_timeout: 10.0
+  # suffix of searxng_useragent, could contain information like an email address
+  # to the administrator
+  useragent_suffix: ""
+  # The maximum number of concurrent connections that may be established.
+  pool_connections: 100
+  # Allow the connection pool to maintain keep-alive connections below this
+  # point.
+  pool_maxsize: 20
+  # See https://www.python-httpx.org/http2/
+  enable_http2: true
+  # uncomment below section if you want to use a custom server certificate
+  # see https://www.python-httpx.org/advanced/#changing-the-verification-defaults
+  # and https://www.python-httpx.org/compatibility/#ssl-configuration
+  #  verify: ~/.mitmproxy/mitmproxy-ca-cert.cer
+  #
+  # uncomment below section if you want to use a proxyq see: SOCKS proxies
+  #   https://2.python-requests.org/en/latest/user/advanced/#proxies
+  # are also supported: see
+  #   https://2.python-requests.org/en/latest/user/advanced/#socks
+  #
+  #  proxies:
+  #    all://:
+  #      - http://proxy1:8080
+  #      - http://proxy2:8080
+  #
+  #  using_tor_proxy: true
+  #
+  # Extra seconds to add in order to account for the time taken by the proxy
+  #
+  #  extra_proxy_timeout: 10
+  #
+  # uncomment below section only if you have more than one network interface
+  # which can be the source of outgoing search requests
+  #
+  #  source_ips:
+  #    - 1.1.1.1
+  #    - 1.1.1.2
+  #    - fe80::/126
+
+
+
+# Configuration of the "Hostnames plugin":
+#
+# hostnames:
+#   replace:
+#     '(.*\.)?youtube\.com$': 'yt.example.com'
+#     '(.*\.)?youtu\.be$': 'yt.example.com'
+#     '(.*\.)?reddit\.com$': 'teddit.example.com'
+#     '(.*\.)?redd\.it$': 'teddit.example.com'
+#     '(www\.)?twitter\.com$': 'nitter.example.com'
+#   remove:
+#     - '(.*\.)?facebook.com$'
+#   low_priority:
+#     - '(.*\.)?google(\..*)?$'
+#   high_priority:
+#     - '(.*\.)?wikipedia.org$'
+#
+# Alternatively you can use external files for configuring the "Hostnames plugin":
+#
+# hostnames:
+#  replace: 'rewrite-hosts.yml'
+#
+# Content of 'rewrite-hosts.yml' (place the file in the same directory as 'settings.yml'):
+# '(.*\.)?youtube\.com$': 'yt.example.com'
+# '(.*\.)?youtu\.be$': 'yt.example.com'
+#
+
+
+categories_as_tabs:
+  general:
+  images:
+  videos:
+  news:
+  map:
+  music:
+  it:
+  science:
+  files:
+  social media:
+
+engines:
+  - name: 360search
+    engine: 360search
+    shortcut: 360so
+    timeout: 20.0
+    disabled: true
+
+  - name: 360search videos
+    engine: 360search_videos
+    shortcut: 360sov
+    disabled: true
+
+  - name: 500px
+    engine: 500px
+    shortcut: "500"
+    disabled: true
+    timeout: 5
+
+  - name: 9gag
+    engine: 9gag
+    shortcut: 9g
+    disabled: true
+
+  - name: acfun
+    engine: acfun
+    shortcut: acf
+    disabled: true
+
+  - name: adobe stock
+    engine: adobe_stock
+    shortcut: asi
+    categories: ["images"]
+    # https://docs.searxng.org/dev/engines/online/adobe_stock.html
+    adobe_order: relevance
+    adobe_content_types: ["photo", "illustration", "zip_vector", "template", "3d", "image"]
+    timeout: 6
+    disabled: true
+
+  - name: adobe stock video
+    engine: adobe_stock
+    shortcut: asv
+    network: adobe stock
+    categories: ["videos"]
+    adobe_order: relevance
+    adobe_content_types: ["video"]
+    timeout: 6
+    disabled: true
+
+  - name: adobe stock audio
+    engine: adobe_stock
+    shortcut: asa
+    network: adobe stock
+    categories: ["music"]
+    adobe_order: relevance
+    adobe_content_types: ["audio"]
+    timeout: 6
+    disabled: true
+
+  - name: astrophysics data system
+    engine: astrophysics_data_system
+    shortcut: ads
+    # read https://docs.searxng.org/dev/engines/online/astrophysics_data_system.html
+    api_key: ""
+    inactive: true
+
+  - name: alpine linux packages
+    engine: alpinelinux
+    disabled: true
+    shortcut: alp
+
+  - name: annas archive
+    engine: annas_archive
+    base_url:
+      - https://annas-archive.gl
+      - https://annas-archive.vg
+      - https://annas-archive.pk
+      - https://annas-archive.gd
+    disabled: true
+    shortcut: aa
+    timeout: 5
+
+  - name: ansa
+    engine: ansa
+    shortcut: ans
+    disabled: true
+
+  # - name: annas articles
+  #   engine: annas_archive
+  #   shortcut: aaa
+  #   # https://docs.searxng.org/dev/engines/online/annas_archive.html
+  #   aa_content: 'magazine' # book_fiction, book_unknown, book_nonfiction, book_comic
+  #   aa_ext: 'pdf'  # pdf, epub, ..
+  #   aa_sort: oldest'  # newest, oldest, largest, smallest
+
+  - name: apk mirror
+    engine: apkmirror
+    timeout: 4.0
+    shortcut: apkm
+    disabled: true
+
+  - name: apple app store
+    engine: apple_app_store
+    shortcut: aps
+    disabled: true
+
+  # Requires Tor
+  - name: ahmia
+    engine: ahmia
+    # Might do up to two requests to perform a search.
+    # Since Tor is already slow by nature, the timeout is set very high.
+    timeout: 20.0
+    categories: onions
+    enable_http: true
+    shortcut: ah
+
+  - name: anaconda
+    engine: xpath
+    paging: true
+    first_page_num: 0
+    search_url: https://anaconda.org/search?q={query}&page={pageno}
+    results_xpath: //tbody/tr
+    url_xpath: ./td/h5/a[last()]/@href
+    title_xpath: ./td/h5
+    content_xpath: ./td[h5]/text()
+    categories: it
+    timeout: 6.0
+    shortcut: conda
+    disabled: true
+
+  - name: aol
+    engine: aol
+    search_type: search
+    categories: [general]
+    shortcut: aol
+    disabled: true
+
+  - name: aol images
+    engine: aol
+    search_type: image
+    categories: [images]
+    shortcut: aoli
+    disabled: true
+
+  - name: aol videos
+    engine: aol
+    search_type: video
+    categories: [videos]
+    shortcut: aolv
+    disabled: true
+
+  - name: arch linux wiki
+    engine: archlinux
+    shortcut: al
+
+  - name: nixos wiki
+    engine: mediawiki
+    shortcut: nixw
+    base_url: https://wiki.nixos.org/
+    search_type: text
+    disabled: true
+    categories: [it, software wikis]
+
+  - name: artic
+    engine: artic
+    shortcut: arc
+    timeout: 4.0
+
+  - name: artstation
+    engine: artstation
+    shortcut: as
+    categories: images
+    disabled: true
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: arx
+
+  - name: azure
+    engine: azure
+    shortcut: az
+    categories: [it, cloud]
+    # azure_tenant_id: "your_tenant_id"
+    # azure_client_id: "your_client_id"
+    # azure_client_secret: "your_client_secret"
+    inactive: true
+
+  # tmp suspended:  dh key too small
+  # - name: base
+  #   engine: base
+  #   shortcut: bs
+
+  - name: bandcamp
+    engine: bandcamp
+    shortcut: bc
+    categories: music
+
+  - name: baidu
+    baidu_category: general
+    categories: [general]
+    engine: baidu
+    shortcut: bd
+    disabled: true
+
+  - name: baidu images
+    baidu_category: images
+    categories: [images]
+    engine: baidu
+    shortcut: bdi
+    disabled: true
+
+  - name: baidu kaifa
+    baidu_category: it
+    categories: [it]
+    engine: baidu
+    shortcut: bdk
+    disabled: true
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    # add "list" to the array to get results in the results list
+    display_type: ["infobox"]
+    categories: [general]
+
+  - name: bilibili
+    engine: bilibili
+    shortcut: bil
+    disabled: true
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: true
+
+  - name: bing images
+    engine: bing_images
+    shortcut: bii
+
+  - name: bing news
+    engine: bing_news
+    shortcut: bin
+
+  - name: bing videos
+    engine: bing_videos
+    shortcut: biv
+
+  - name: bitchute
+    engine: bitchute
+    shortcut: bit
+    disabled: true
+
+  - name: bitbucket
+    engine: xpath
+    paging: true
+    search_url: https://bitbucket.org/repo/all/{pageno}?name={query}
+    url_xpath: //article[@class="repo-summary"]//a[@class="repo-link"]/@href
+    title_xpath: //article[@class="repo-summary"]//a[@class="repo-link"]
+    content_xpath: //article[@class="repo-summary"]/p
+    categories: [it, repos]
+    timeout: 4.0
+    disabled: true
+    shortcut: bb
+    about:
+      website: https://bitbucket.org/
+      wikidata_id: Q2493781
+      official_api_documentation: https://developer.atlassian.com/bitbucket
+      use_official_api: false
+      require_api_key: false
+      results: HTML
+
+  - name: boardreader
+    engine: boardreader
+    shortcut: boa
+    disabled: true
+
+  - name: bpb
+    engine: bpb
+    shortcut: bpb
+    disabled: true
+
+  - name: btdigg
+    engine: btdigg
+    shortcut: bt
+    disabled: true
+
+  - name: openverse
+    engine: openverse
+    categories: images
+    shortcut: opv
+
+  - name: media.ccc.de
+    engine: ccc_media
+    shortcut: c3tv
+    # We don't set language: de here because media.ccc.de is not just
+    # for a German audience. It contains many English videos and many
+    # German videos have English subtitles.
+    disabled: true
+
+  - name: cachy os packages
+    engine: cachy_os
+    shortcut: cos
+    disabled: true
+
+  - name: cara
+    engine: cara
+    shortcut: ca
+    disabled: true
+
+  - name: chefkoch
+    engine: chefkoch
+    shortcut: chef
+    # to show premium or plus results too:
+    # skip_premium: false
+
+  # WARNING: links from chinaso.com voilate users privacy
+  # Before activate these engines its mandatory to read
+  # - https://github.com/searxng/searxng/issues/4694
+  # - https://docs.searxng.org/dev/engines/online/chinaso.html
+
+  - name: chinaso news
+    engine: chinaso
+    shortcut: chinaso
+    categories: [news]
+    chinaso_category: news
+    chinaso_news_source: all
+    disabled: true
+    inactive: true
+
+  - name: chinaso images
+    engine: chinaso
+    network: chinaso news
+    shortcut: chinasoi
+    categories: [images]
+    chinaso_category: images
+    disabled: true
+    inactive: true
+
+  - name: chinaso videos
+    engine: chinaso
+    network: chinaso news
+    shortcut: chinasov
+    categories: [videos]
+    chinaso_category: videos
+    disabled: true
+    inactive: true
+
+  - name: cloudflareai
+    engine: cloudflareai
+    shortcut: cfai
+    # get api token and accont id from https://developers.cloudflare.com/workers-ai/get-started/rest-api/
+    cf_account_id: 'your_cf_accout_id'
+    cf_ai_api: 'your_cf_api'
+    # create your ai gateway by https://developers.cloudflare.com/ai-gateway/get-started/creating-gateway/
+    cf_ai_gateway: 'your_cf_ai_gateway_name'
+    # find the model name from https://developers.cloudflare.com/workers-ai/models/#text-generation
+    cf_ai_model: 'ai_model_name'
+    # custom your preferences
+    # cf_ai_model_display_name: 'Cloudflare AI'
+    # cf_ai_model_assistant: 'prompts_for_assistant_role'
+    # cf_ai_model_system: 'prompts_for_system_role'
+    timeout: 30
+    inactive: true
+
+  - name: core.ac.uk
+    engine: core
+    shortcut: cor
+    # read https://docs.searxng.org/dev/engines/online/core.html
+    api_key: ""
+    inactive: true
+
+  - name: crossref
+    engine: crossref
+    shortcut: cr
+    timeout: 30
+    disabled: true
+
+  - name: crowdview
+    engine: json_engine
+    shortcut: cv
+    categories: general
+    paging: false
+    search_url: https://crowdview-next-js.onrender.com/api/search-v3?query={query}
+    results_query: results
+    url_query: link
+    title_query: title
+    content_query: snippet
+    title_html_to_text: true
+    content_html_to_text: true
+    disabled: true
+    about:
+      website: https://crowdview.ai/
+
+  - name: yep
+    engine: yep
+    shortcut: yep
+    categories: general
+    disabled: true
+
+  - name: currency
+    engine: currency_convert
+    shortcut: cc
+
+  - name: deezer
+    engine: deezer
+    shortcut: dz
+    disabled: true
+
+  - name: destatis
+    engine: destatis
+    shortcut: destat
+    disabled: true
+
+  - name: deviantart
+    engine: deviantart
+    shortcut: da
+    categories: images
+    disabled: true
+
+  - name: ddg definitions
+    engine: ddg_definitions
+    shortcut: ddg
+    disabled: true
+
+  - name: digg
+    engine: digg
+    shortcut: dg
+    disabled: true
+
+  - name: docker hub
+    engine: docker_hub
+    shortcut: dh
+    categories: it
+    disabled: true
+
+  - name: erowid
+    engine: erowid
+    shortcut: ew
+    disabled: true
+
+  - name: fdroid
+    engine: fdroid
+    shortcut: fd
+    disabled: true
+
+  - name: flickr
+    categories: images
+    engine: flickr
+    shortcut: fl
+    disabled: true
+
+  - name: free software directory
+    engine: free_software_directory
+    shortcut: fsd
+    disabled: true
+
+  - name: frinkiac
+    engine: frinkiac
+    shortcut: frk
+    disabled: true
+
+  - name: fyyd
+    engine: fyyd
+    shortcut: fy
+    disabled: true
+
+  - name: genius
+    engine: genius
+    shortcut: gen
+    disabled: true
+
+  - name: gentoo
+    engine: gentoo
+    shortcut: ge
+    disabled: true
+
+  - name: gitlab
+    engine: gitlab
+    shortcut: gl
+    disabled: true
+
+  - name: google
+    engine: google
+    shortcut: gg
+    disabled: true
+
+  - name: google images
+    engine: google_images
+    shortcut: ggi
+    disabled: true
+
+  - name: google news
+    engine: google_news
+    shortcut: ggn
+    disabled: true
+
+  - name: google videos
+    engine: google_videos
+    shortcut: ggv
+    disabled: true
+
+  - name: hacker news
+    engine: hackernews
+    shortcut: hn
+    disabled: true
+
+  - name: hoogle
+    engine: hoogle
+    shortcut: hg
+    disabled: true
+
+  - name: ina
+    engine: ina
+    shortcut: ina
+    disabled: true
+
+  - name: json engine (testing)
+    engine: json_engine
+    shortcut: json
+    disabled: true
+
+  - name: kickass
+    engine: kickass
+    shortcut: ka
+    disabled: true
+
+  - name: library genesis
+    engine: library_genesis
+    shortcut: lg
+    disabled: true
+
+  - name: lund university publications
+    engine: lunduniversity
+    shortcut: lu
+    disabled: true
+
+  - name: mastodon
+    engine: mastodon
+    shortcut: ms
+    disabled: true
+
+  - name: mixcloud
+    engine: mixcloud
+    shortcut: mc
+    disabled: true
+
+  - name: moat
+    engine: moat
+    shortcut: mo
+    disabled: true
+
+  - name: moviepilot
+    engine: moviepilot
+    shortcut: mp
+    disabled: true
+
+  - name: national vulnerability database
+    engine: nvd
+    shortcut: nvd
+    disabled: true
+
+  - name: naver
+    categories: [general, web]
+    engine: naver
+    shortcut: nvr
+    disabled: true
+
+  - name: naver images
+    naver_category: images
+    categories: [images]
+    engine: naver
+    shortcut: nvri
+    disabled: true
+
+  - name: naver news
+    naver_category: news
+    engine: naver
+    shortcut: nvrn
+    disabled: true
+
+  - name: naver videos
+    naver_category: videos
+    engine: naver
+    shortcut: nvrv
+    disabled: true
+
+  - name: openstreetmap
+    engine: openstreetmap
+    shortcut: osm
+    disabled: true
+
+  - name: openverse
+    engine: openverse
+    categories: images
+    shortcut: opv
+
+  - name: phind
+    engine: phind
+    shortcut: ph
+    disabled: true
+
+  - name: pinterest
+    engine: pinterest
+    shortcut: pin
+    disabled: true
+
+  - name: pixabay
+    engine: pixabay
+    shortcut: pix
+    disabled: true
+
+  - name: pixabay images
+    engine: pixabay
+    shortcut: pixi
+    disabled: true
+
+  - name: pixabay videos
+    engine: pixabay
+    shortcut: pixv
+    disabled: true
+
+  - name: pubmed
+    engine: pubmed
+    shortcut: pm
+    disabled: true
+
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    disabled: true
+
+  - name: rubygems
+    engine: rubygems
+    shortcut: rg
+    disabled: true
+
+  - name: seznam
+    engine: seznam
+    shortcut: szn
+    disabled: true
+
+  - name: soundcloud
+    engine: soundcloud
+    shortcut: sc
+    disabled: true
+
+  - name: stackexchange
+    engine: stackexchange
+    shortcut: se
+    disabled: true
+
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: so
+    disabled: true
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    disabled: true
+
+  - name: superuser
+    engine: superuser
+    shortcut: su
+    disabled: true
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    # add "list" to the array to get results in the results list
+    display_type: ["infobox"]
+    categories: [general]
+
+  - name: wikiversity
+    engine: wikiversity
+    shortcut: wv
+    disabled: true
+
+  - name: wolfram alpha
+    engine: wolframalpha
+    shortcut: wa
+    disabled: true
+
+  - name: yahoo
+    engine: yahoo
+    shortcut: yah
+    disabled: true
+
+  - name: youtube
+    engine: youtube
+    shortcut: yt
+    disabled: true
+
+  - name: dailymotion
+    engine: dailymotion
+    shortcut: dm
+    disabled: true
+
+  - name: vimeo
+    engine: vimeo
+    shortcut: vi
+    disabled: true
+
+  - name: vine
+    engine: vine
+    shortcut: vi
+    disabled: true
+
+  - name: twitter
+    engine: twitter
+    shortcut: tw
+    disabled: true
+
+  - name: tootsearch
+    engine: tootsearch
+    shortcut: to
+    disabled: true
+
+  - name: peertube
+    engine: peertube
+    shortcut: pt
+    disabled: true
+
+  - name: mediathekviewweb
+    engine: mediathekviewweb
+    shortcut: mvw
+    disabled: true
+
+  - name: yacy
+    engine: yacy
+    shortcut: ya
+    disabled: true
+
+  - name: yacy images
+    engine: yacy
+    shortcut: yai
+    disabled: true
+
+  - name: rumble
+    engine: rumble
+    shortcut: ru
+    disabled: true
+
+  - name: wordnik
+    engine: wordnik
+    shortcut: wnik
+    disabled: true
+
+  - name: woxikon.de synonyme
+    engine: woxikon
+    shortcut: woxi
+    disabled: true
+
+  - name: svgrepo
+    engine: svgrepo
+    shortcut: svg
+    disabled: true
+
+  - name: tootfinder
+    engine: tootfinder
+    shortcut: toot
+    disabled: true
+
+  - name: uxwing
+    engine: uxwing
+    shortcut: ux
+    disabled: true
+
+  - name: voidlinux
+    engine: voidlinux
+    shortcut: void
+    disabled: true
+
+  - name: wallhaven
+    engine: wallhaven
+    shortcut: wh
+    disabled: true
+
+  - name: wikimini
+    engine: wikimini
+    shortcut: wkmn
+    disabled: true
+
+  - name: wttr.in
+    engine: wttr
+    shortcut: wttr
+    disabled: true
+
+  - name: braveapi
+    engine: braveapi
+    shortcut: br
+    disabled: true
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    disabled: true
+
+  - name: brave.images
+    engine: brave
+    shortcut: brimg
+    disabled: true
+
+  - name: brave.videos
+    engine: brave
+    shortcut: brvid
+    disabled: true
+
+  - name: brave.news
+    engine: brave
+    shortcut: brnews
+    disabled: true
+
+  - name: lib.rs
+    engine: lib_rs
+    shortcut: lrs
+    disabled: true
+
+  - name: sourcehut
+    engine: sourcehut
+    shortcut: srht
+    disabled: true
+
+  - name: bt4g
+    engine: bt4g
+    shortcut: bt4g
+    disabled: true
+
+  - name: pkg.go.dev
+    engine: pkg_go_dev
+    shortcut: pgo
+    disabled: true
+
+  - name: senscritique
+    engine: senscritique
+    shortcut: scr
+    disabled: true
+
+  - name: minecraft wiki
+    engine: mediawiki
+    shortcut: mcw
+    disabled: true
+
+  - name: ubuntuwiki
+    engine: doku
+    shortcut: uw
+    disabled: true
+
+  - name: git grep
+    engine: command
+    shortcut: gg
+    disabled: true
+
+  - name: locate
+    engine: command
+    shortcut: loc
+    disabled: true
+
+  - name: find
+    engine: command
+    shortcut: fnd
+    disabled: true
+
+  - name: pattern search in files
+    engine: command
+    shortcut: fgr
+    disabled: true
+
+  - name: regex search in files
+    engine: command
+    shortcut: gr
+    disabled: true
+
+  - name: doi.org
+    engine: doi
+    shortcut: doi
+    disabled: true
+
+  - name: oadoi.org
+    engine: oadoi
+    shortcut: oadoi
+    disabled: true
+
+  - name: sci-hub.se
+    engine: scihub
+    shortcut: sci
+    disabled: true
+
+  - name: sci-hub.st
+    engine: scihub
+    shortcut: sci
+    disabled: true
+
+  - name: sci-hub.ru
+    engine: scihub
+    shortcut: sci
+    disabled: true
+
+# Doku engine lets you access to any Doku wiki instance:
+# A public one or a privete/corporate one.
+#  - name: ubuntuwiki
+#    engine: doku
+#    shortcut: uw
+#    base_url: 'https://doc.ubuntu-fr.org'
+
+# Be careful when enabling this engine if you are
+# running a public instance. Do not expose any sensitive
+# information. You can restrict access by configuring a list
+# of access tokens under tokens.
+#  - name: git grep
+#    engine: command
+#    command: ['git', 'grep', '{{QUERY}}']
+#    shortcut: gg
+#    tokens: []
+#    disabled: true
+#    delimiter:
+#        chars: ':'
+#        keys: ['filepath', 'code']
+
+# Be careful when enabling this engine if you are
+# running a public instance. Do not expose any sensitive
+# information. You can restrict access by configuring a list
+# of access tokens under tokens.
+#  - name: locate
+#    engine: command
+#    command: ['locate', '{{QUERY}}']
+#    shortcut: loc
+#    tokens: []
+#    disabled: true
+#    delimiter:
+#        chars: ' '
+#        keys: ['line']
+
+# Be careful when enabling this engine if you are
+# running a public instance. Do not expose any sensitive
+# information. You can restrict access by configuring a list
+# of access tokens under tokens.
+#  - name: find
+#    engine: command
+#    command: ['find', '.', '-name', '{{QUERY}}']
+#    query_type: path
+#    shortcut: fnd
+#    tokens: []
+#    disabled: true
+#    delimiter:
+#        chars: ' '
+#        keys: ['line']
+
+# Be careful when enabling this engine if you are
+# running a public instance. Do not expose any sensitive
+# information. You can restrict access by configuring a list
+# of access tokens under tokens.
+#  - name: pattern search in files
+#    engine: command
+#    command: ['fgrep', '{{QUERY}}']
+#    shortcut: fgr
+#    tokens: []
+#    disabled: true
+#    delimiter:
+#        chars: ' '
+#        keys: ['line']
+
+# Be careful when enabling this engine if you are
+# running a public instance. Do not expose any sensitive
+# information. You can restrict access by configuring a list
+# of access tokens under tokens.
+#  - name: regex search in files
+#    engine: command
+#    command: ['grep', '{{QUERY}}']
+#    shortcut: gr
+#    tokens: []
+#    disabled: true
+#    delimiter:
+#        chars: ' '
+#        keys: ['line']
+
+# Be careful when enabling this engine if you are
+# running a public instance. Do not expose any sensitive
+# information. You can restrict access by configuring a list
+# of access tokens under tokens.
+#  - name: regex search in files
+#    engine: command
+#    command: ['grep', '{{QUERY}}']
+#    shortcut: gr
+#    tokens: []
+#    disabled: true
+#    delimiter:
+#        chars: ' '
+#        keys: ['line']
+
+doi_resolvers:
+  oadoi.org: 'https://oadoi.org/'
+  doi.org: 'https://doi.org/'
+  sci-hub.se: 'https://sci-hub.se/'
+  sci-hub.st: 'https://sci-hub.st/'
+  sci-hub.ru: 'https://sci-hub.ru/'
+
+default_doi_resolver: 'oadoi.org'

@@ -1,0 +1,211 @@
+/* French translations for Searxly.
+   Keys must match exactly those in en.lproj/Localizable.strings.
+*/
+
+"settings_title" = "Réglages";
+"settings_done" = "Terminé";
+
+"appearance_title" = "Apparence";
+"language_title" = "Langue";
+"language_description" = "Modifie l’interface de l’application et envoie une préférence de langue à votre instance SearXNG pour influencer les résultats de recherche.";
+"theme_title" = "Thème";
+"theme_system" = "Système";
+"theme_light" = "Clair";
+"theme_dark" = "Sombre";
+"theme_description" = "Le système suit les réglages de votre Mac. Le mode sombre est l’expérience premium conçue pour Searxly.";
+"reduce_liquid_glass" = "Réduire le Liquid Glass";
+"reduce_liquid_glass_description" = "Réduit le flou, la transparence et les effets de verre avancés. Utile pour les performances ou l’accessibilité.";
+
+"searching_searxng" = "Recherche SearXNG…";
+"search_placeholder_compact" = "Recherche privée…";
+"search_placeholder" = "Rechercher avec SearXNG ou saisir une URL";
+"search_placeholder_web_compact" = "URL ou recherche";
+"search_placeholder_web" = "Saisir une URL ou une recherche";
+"search_for_prefix" = "Rechercher";
+"search_engine_badge" = "SearXNG";
+
+"results_header_results" = "Résultats";
+"results_header_web" = "Web";
+"results_header_images" = "Images";
+"results_header_videos" = "Vidéos";
+"results_header_news" = "Actualités";
+"results_count_separator" = "·";
+"button_clear" = "Effacer";
+
+"category_all" = "Tout";
+"category_web" = "Web";
+"category_images" = "Images";
+"category_videos" = "Vidéos";
+"category_news" = "Actualités";
+
+"home_tagline" = "Recherche privée, vos règles.";
+"home_subtitle" = "Toutes les requêtes passent par votre instance SearXNG.\nAucun suivi. Aucun journal de notre part.";
+"private_instance_active" = "Instance privée active";
+"home_instance_not_detected" = "Instance SearXNG introuvable";
+
+"no_instance_configured" = "Aucune instance SearXNG configurée";
+"no_instance_message" = "Ajoutez votre instance SearXNG privée dans les Réglages pour commencer à rechercher en privé.";
+"open_settings" = "Ouvrir les Réglages";
+"searxng_unavailable" = "Recherche SearXNG indisponible";
+"add_my_instance" = "Ajouter ma propre instance SearXNG";
+"self_hosting_reliable" = "L’auto-hébergement de SearXNG est le seul moyen fiable d’obtenir des résultats de recherche privés cohérents.";
+"no_matches_history" = "Aucune correspondance dans l’historique ou les signets";
+
+"new_tab" = "Nouvel onglet";
+"sidebar_settings" = "Réglages";
+"forget_this_site" = "Oublier ce site";
+"close_tab" = "Fermer l’onglet";
+"auto_cleanup_on" = "Nettoyage auto le";
+"auto_hibernate_inactive" = "Mise en veille automatique des onglets inactifs dans";
+
+"version_prefix" = "v";
+
+/* Settings categories (for sidebar) */
+"privacy_title" = "Confidentialité & Données";
+"security_title" = "Sécurité de l'app";
+"vpn_title" = "VPN";
+"performance_title" = "Performances";
+"developer_title" = "Développeur";
+"search_title" = "Recherche";
+"instances_title" = "Instances SearXNG";
+"about_title" = "À propos";
+
+/* About pane */
+"about_searxly_title" = "Searxly";
+"about_description" = "Une expérience de recherche privée et locale alimentée par SearXNG.";
+"about_version" = "Version 0.7 (\(Bundle.main.buildNumber))";
+"about_powered_by" = "Propulsé par SearXNG + SwiftUI + WebKit";
+"reset_onboarding" = "Réinitialiser l'onboarding";
+
+/* Search detail removed (smart suggestions disabled in address bar) */
+
+/* Privacy detail strings */
+"privacy_header" = "Confidentialité & Données";
+"privacy_intro" = "Searxly est conçu pour que vos recherches vous appartiennent. Les seules données qui quittent votre Mac sont celles que vous envoyez explicitement à une instance SearXNG que vous contrôlez.";
+"activate_max_privacy" = "Activer le préréglage Confidentialité maximale";
+"what_is_stored" = "Ce qui est stocké localement sur ce Mac :";
+"stored_items" = "• Votre liste d'instances SearXNG\n• Historique de navigation et signets (seulement si activés ci-dessous)\n• Données de recommandations apprises (ce qui rend la barre d'adresse plus intelligente)\n• Cookies et stockage de site pour les onglets Standard (les onglets Privés sont complètement isolés et supprimés automatiquement à la fermeture)";
+"save_browsing_history" = "Enregistrer l'historique de navigation";
+"default_new_tabs_private" = "Nouveaux onglets en mode Privé par défaut";
+"default_new_tabs_private_desc" = "Lorsqu'activé, la commande Nouvel onglet (⌘T) crée un onglet Privé complètement isolé. \"Nouvel onglet Privé\" (⌘⇧T) reste toujours disponible explicitement.";
+"encrypt_local_data" = "Chiffrer les données locales au repos";
+"encrypt_desc" = "Chiffre l'historique, les signets, les instances, l'état des onglets et les suggestions apprises avec CryptoKit + Keychain. Utilisez le bouton ci-dessous pour copier un code de récupération lorsque activé. Si vous perdez la clé sans code de récupération, vos données chiffrées ne pourront pas être récupérées. Cette fonctionnalité est optionnelle.";
+"copy_recovery_code" = "Copier le code de récupération";
+"blocks_trackers" = "Bloque les traqueurs les plus courants (Google Analytics, Facebook Pixel, DoubleClick, Hotjar, etc.) et de nombreuses publicités directement dans le navigateur via le moteur de blocage de contenu de WebKit. Fonctionne sur les onglets Standard et Privés. Ceci est distinct du filtrage de recherche de SearXNG.";
+"clear_data" = "Effacer les données";
+"clear_browsing_data" = "Effacer les données de navigation…";
+/* "clear_learned_suggestions_btn" removed — smart suggestions setting deleted */
+"clear_history" = "Effacer l'historique";
+"clear_standard_tab_data" = "Effacer les données des onglets Standard";
+"reset_all_local_data" = "Réinitialiser toutes les données locales";
+
+"recovery_code_copied" = "Code de récupération copié dans le presse-papiers. Stockez-le en lieu sûr — quiconque possède ce code peut déchiffrer vos données.";
+"no_encryption_key" = "Aucune clé de chiffrement trouvée à exporter.";
+"max_privacy_activated" = "Mode Confidentialité maximale activé : les nouveaux onglets sont maintenant Privés par défaut, l'enregistrement de l'historique est désactivé, et les suggestions apprises ont été effacées.";
+"search_suggestion_data_cleared" = "Données de suggestions de recherche effacées.";
+
+/* Onboarding (redesigned first-run experience — magical welcome + 6-step privacy journey) */
+"onboarding_welcome_title" = "Navigateur macOS natif axé sur la confidentialité.";
+"onboarding_welcome_subtitle" = "SearXNG local. Liquid Glass magnifique. Privé par design.";
+"onboarding_welcome_benefit_local" = "Vos recherches restent sur votre Mac. Aucun tiers.";
+"onboarding_welcome_benefit_instant" = "Recherche privée instantanée grâce à votre propre instance Docker.";
+
+"onboarding_why_title" = "Pourquoi uniquement des instances privées ?";
+"onboarding_why_body" = "Les instances publiques sont peu fiables, lentes et vont à l’encontre du but de la recherche privée. Searxly ne prend en charge que celles que vous contrôlez.";
+"onboarding_why_unreliable_title" = "Peu fiable";
+"onboarding_why_unreliable_body" = "Les publiques tombent souvent ou limitent le débit.";
+"onboarding_why_not_private_title" = "Pas privé";
+"onboarding_why_not_private_body" = "Vos recherches vont sur le serveur de quelqu’un d’autre.";
+"onboarding_why_local_conclusion" = "Votre instance locale = tout reste sur votre Mac.";
+
+"onboarding_privacy_choice_title" = "Choisissez la confidentialité par défaut de vos onglets";
+"onboarding_privacy_choice_desc" = "Cela définit ce qui se passe quand vous appuyez sur ⌘T. Vous pouvez le modifier à tout moment dans les Réglages.";
+"onboarding_privacy_max_title" = "Confidentialité maximale";
+"onboarding_privacy_max_subtitle" = "Recommandé";
+"onboarding_privacy_max_benefit_1" = "Les nouveaux onglets sont entièrement privés par défaut";
+"onboarding_privacy_max_benefit_2" = "Aucun historique ni cookie après la fermeture";
+"onboarding_privacy_max_benefit_3" = "Protection la plus forte";
+"onboarding_privacy_max_tradeoff_1" = "Reconnexion à chaque nouvel onglet";
+"onboarding_privacy_balanced_title" = "Équilibré";
+"onboarding_privacy_balanced_subtitle" = "Plus pratique";
+"onboarding_privacy_balanced_benefit_1" = "Les onglets standards conservent les connexions comme Safari";
+"onboarding_privacy_balanced_benefit_2" = "Onglets privés toujours disponibles avec ⌘⇧T";
+"onboarding_privacy_balanced_tradeoff_1" = "Certaines données persistent sur ce Mac";
+"onboarding_privacy_confirm" = "Confirmer et continuer";
+
+"onboarding_encrypt_title" = "Protéger vos données sur ce Mac ?";
+"onboarding_encrypt_body" = "Chiffrez l’historique, les signets, les instances et les suggestions avec le trousseau de votre Mac. Optionnel mais recommandé.";
+"onboarding_encrypt_enable_title" = "Activer le chiffrement (recommandé)";
+"onboarding_encrypt_enable_desc" = "Vos données restent privées même si quelqu’un accède à votre Mac.";
+"onboarding_encrypt_skip_title" = "Ignorer pour l’instant";
+"onboarding_encrypt_skip_desc" = "Vous pourrez l’activer plus tard dans les Réglages.";
+"onboarding_encrypt_recovery_prompt" = "Enregistrez ce code de récupération (pour le chiffrement).";
+"onboarding_encrypt_copy_btn" = "Copier le code de récupération";
+"onboarding_encrypt_copied_btn" = "Copié !";
+"onboarding_encrypt_continue" = "Continuer vers le verrouillage de l’app →";
+
+"onboarding_applock_title" = "Protéger l’accès à Searxly";
+"onboarding_applock_body" = "Utilisez Touch ID ou le mot de passe de connexion de votre Mac pour verrouiller l’application.\nCela ajoute aussi une couche de protection supplémentaire à vos données chiffrées.";
+"onboarding_applock_enable_label" = "Activer le verrouillage de l’app";
+"onboarding_applock_waiting" = "En attente de Touch ID...";
+"onboarding_applock_skip" = "Ignorer pour l’instant (non recommandé)";
+"onboarding_applock_footer_trust" = "Utilise le même système sécurisé que celui de confiance de votre Mac";
+"onboarding_applock_footer_change" = "Vous pouvez modifier ces options plus tard dans Réglages → Sécurité de l’app. Nous vous recommandons fortement de l’activer maintenant.";
+
+"onboarding_setup_title" = "Configurer votre moteur de recherche privé local";
+"onboarding_setup_body" = "Installez Docker Desktop, lancez-le jusqu'à ce qu'il indique qu'il fonctionne, puis testez la connexion. Searxly s’occupe du reste (les configs sont incluses).";
+"onboarding_setup_need_docker" = "Vous devez installer Docker Desktop (gratuit).";
+"onboarding_setup_download_docker" = "Télécharger Docker Desktop";
+"onboarding_setup_docker_cli_hint" = "Après installation, lancez Docker Desktop et attendez qu'il indique « Docker Desktop is running ». Ouvrez le Terminal et tapez `docker --version`, puis appuyez sur Recheck.";
+"onboarding_setup_cli_recheck" = "Docker est lancé — vérifier à nouveau";
+"onboarding_setup_docker_ready" = "Docker Desktop prêt";
+"onboarding_setup_recheck" = "Revérifier";
+"onboarding_setup_test_title" = "Tester la connexion";
+"onboarding_setup_test_desc" = "Cliquez ci-dessous une fois que votre instance locale indique « Running » ci-dessus. Cela confirme que tout fonctionne.";
+"onboarding_setup_test_btn" = "Tester la connexion";
+"onboarding_setup_retest_btn" = "Retester la connexion";
+"onboarding_setup_testing" = "Test de connexion…";
+"onboarding_setup_success_local" = "✓ Parfait — votre instance Docker locale est en cours d’exécution et prête.";
+"onboarding_setup_success_remote" = "✓ Succès — votre instance SearXNG privée répond correctement.";
+"onboarding_setup_not_searxng" = "Connecté, mais cela ne semble pas être SearXNG.";
+"onboarding_setup_fail_local" = "Impossible d’atteindre localhost:8080 après plusieurs tentatives. Assurez-vous que le conteneur affiche « Running » ci-dessus, attendez un peu plus au premier démarrage, puis réessayez.";
+"onboarding_setup_fail_generic" = "Connexion impossible : %@";
+"onboarding_setup_ready" = "Votre SearXNG privé est prêt.";
+"onboarding_setup_finishing" = "Fin dans %ds…";
+"onboarding_setup_cancel_auto" = "Annuler";
+"onboarding_setup_done_btn" = "Terminé — Commencer à rechercher en privé";
+"onboarding_setup_need_complete" = "Terminez les étapes ci-dessus pour activer Terminé";
+
+"onboarding_nav_back" = "Retour";
+"onboarding_nav_later" = "Plus tard dans les Réglages";
+"onboarding_nav_step0" = "Pourquoi c’est important →";
+"onboarding_nav_step1" = "Choisir la confidentialité des onglets →";
+"onboarding_nav_step2" = "Protéger mes données →";
+"onboarding_nav_step3" = "Configurer le verrouillage →";
+"onboarding_applock_helper" = "Activez ou ignorez le verrouillage de l’app ci-dessus pour continuer";
+
+/* Feedback tab (new Settings category — silent Discord webhook delivery) */
+"feedback_title" = "Commentaires";
+"feedback_header" = "Envoyer des commentaires ou signaler un bug";
+"feedback_intro" = "Signalez des bugs, suggérez des fonctionnalités ou partagez vos impressions. Ceci est envoyé directement et automatiquement au développeur sans étape supplémentaire de votre côté.";
+"feedback_type_label" = "Type";
+"feedback_type_bug" = "Rapport de bug";
+"feedback_type_suggestion" = "Suggestion de fonctionnalité";
+"feedback_type_general" = "Commentaire général";
+"feedback_type_other" = "Autre";
+"feedback_title_label" = "Titre (optionnel)";
+"feedback_title_placeholder" = "Résumé court (ex. \"Crash au lancement avec la locale française\")";
+"feedback_description_label" = "Description";
+"feedback_include_label" = "Inclure avec le rapport (aide au débogage)";
+"feedback_include_app" = "Version de l’app et version de macOS";
+"feedback_include_app_desc" = "ex. v0.7 (build 42) sur macOS 15.5";
+"feedback_include_instance" = "Instance SearXNG actuelle (nom + URL uniquement)";
+"feedback_include_instance_none" = "Aucune instance configurée";
+"feedback_send" = "Envoyer les commentaires";
+"feedback_sending" = "Envoi en cours…";
+"feedback_sent" = "Merci ! Vos commentaires ont été envoyés directement au développeur.";
+"feedback_error_prefix" = "Échec de l’envoi :";
+"feedback_copy" = "Copier le rapport dans le presse-papiers";
+"feedback_copied" = "Rapport copié dans le presse-papiers.";
+"feedback_github_link" = "Signaler plutôt sur GitHub";
+"feedback_disclosure" = "Les informations que vous choisissez d’inclure sont envoyées directement au développeur de Searxly. Rien n’est stocké ou transmis via des outils d’analyse tiers.";

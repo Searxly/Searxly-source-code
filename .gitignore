@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Searxly — public repository .gitignore
+#
+# This repo publishes source for transparency/review only. Several things are
+# deliberately kept OUT of the public tree:
+#   • Build outputs and any distributable app/dmg (so no binary can be downloaded)
+#   • The app entry point (so a fresh clone does not build a runnable app)
+#   • The ad-block engine and the VPN/WireGuard implementation (kept private)
+#   • Signing identity, local machine state, and secrets
+# Ignored files still live in the maintainer's local working copy — git just
+# never tracks or publishes them.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Build artifacts / distributables (no downloadable binary in the repo) ──────
+build/
+dist/
+DerivedData/
+*.xcarchive
+*.app
+*.dmg
+*.ipa
+
+# ── Swift Package Manager ──────────────────────────────────────────────────────
+.build/
+**/.build/
+.swiftpm/
+Package.resolved
+
+# ── Xcode user-specific state ──────────────────────────────────────────────────
+**/xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+
+# ── macOS noise ────────────────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+
+# ── Local tooling / agent state (contains absolute machine paths) ──────────────
+.claude/settings.local.json
+
+# ── Secrets / generated config ─────────────────────────────────────────────────
+# Real SearXNG config is generated at runtime; only the *.example template ships.
+**/settings.yml
+!**/settings.yml.example
+searxng-local/
+*.log
+*.env
+.env*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Intentionally PRIVATE source (implementation hidden from the public repo)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# App entry point — omitted so public clones can't build a runnable/distributable app
+Searxly/App/SearxlyApp.swift
+
+# Operator-side cloud AI config — contains the io.net API key; never publish
+Searxly/LocalAI/Core/SearxlyAICloud.swift
+
+# Ad-block engine — implementation, filter lists, and cosmetic configs kept private
+Searxly/AdBlocker/
+Searxly/Browser/WebViewRepresentable+AdBlock.swift
+scripts/regenerate_ublock_filters.py
+
+# VPN / WireGuard — adapter, tunnel provider, and UI kept private
+Searxly/VPN/
+SearxlyWireGuardTunnel/
+Searxly/Views/Features/VPNOwnServersView.swift
+Searxly/Views/Components/VPNBrowserControl.swift
+
+# Real-celebrity photos + generators — publicity/copyright; kept private
+Searxly/Resources/CelebrityFaces/
+scripts/regenerate_celebrity_faces.py
+scripts/add_celebrity_face.sh
+
+# Third-party NSFW domain blocklist — kept private (attribution/redistribution)
+Searxly/ContentSafety/

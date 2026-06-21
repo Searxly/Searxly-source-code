@@ -1,0 +1,116 @@
+//
+//  WalletSwap.swift
+//  Searxly
+//
+//  Token swaps on Base via the 0x Swap API (allowance-holder endpoint, which returns a
+//  ready-to-sign transaction). Requires a free 0x API key (Settings → Wallet). Toggle-gated.
+//
+
+import Foundation
+
+struct SwapQuote {
+    let sellToken: WalletToken
+    let buyToken: WalletToken
+    let sellAmount: Decimal
+    let buyAmountRaw: [UInt8]        // base units of buyToken
+    let minBuyAmountRaw: [UInt8]
+    let to: String                  // tx target
+    let data: String                // tx calldata
+    let value: String               // tx value (for native ETH sells)
+    let needsAllowanceTo: String?   // spender to approve (nil for native ETH sells)
+
+    var buyAmountDisplay: String { formatBase(buyAmountRaw, decimals: buyToken.decimals) }
+    var minBuyAmountDisplay: String { formatBase(minBuyAmountRaw, decimals: buyToken.decimals) }
+
+    private func formatBase(_ bytes: [UInt8], decimals: Int) -> String {
+        var v = 0.0
+        for b in bytes { v = v * 256 + Double(b) }
+        let amt = v / pow(10.0, Double(decimals))
+        if amt == 0 { return "0" }
+        if amt < 0.0001 { return String(format: "%.8f", amt) }
+        return String(format: "%.6f", amt)
+    }
+}
+
+enum WalletSwap {
+    /// The 0x convention for "native ETH".
+    static let nativeETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+    static func token0xAddress(_ token: WalletToken) -> String {
+        token.contractAddress ?? nativeETH
+    }
+
+    enum SwapError: LocalizedError {
+        case noKey, badResponse(String), notConfigured
+        var errorDescription: String? {
+            switch self {
+            case .noKey: return "Add a free 0x API key in Settings → Wallet to enable swaps."
+            case .notConfigured: return "Swaps are turned off. Enable them in Settings → Wallet."
+            case .badResponse(let m): return m
+            }
+        }
+    }
+
+    /// Fetches a swap quote. `taker` is the wallet address.
+    static func quote(sell: WalletToken, buy: WalletToken, sellAmount: Decimal, taker: String,
+                      chainId: Int = WalletConfig.baseChainID) async -> Result<SwapQuote, SwapError> {
+        guard WalletFeatures.swaps else { return .failure(.notConfigured) }
+        let key = WalletFeatures.zeroExAPIKey
+        guard !key.isEmpty else { return .failure(.noKey) }
+
+        let sellAmountBase = WeiConverter.baseUnitDecimalString(amount: sellAmount, decimals: sell.decimals)
+        var comps = URLComponents(string: "\(WalletConfig.swapAPIBase)/swap/allowance-holder/quote")
+        comps?.queryItems = [
+            .init(name: "chainId", value: String(chainId)),
+            .init(name: "sellToken", value: token0xAddress(sell)),
+            .init(name: "buyToken", value: token0xAddress(buy)),
+            .init(name: "sellAmount", value: sellAmountBase),
+            .init(name: "taker", value: taker),
+        ]
+        guard let url = comps?.url else { return .failure(.badResponse("Bad URL")) }
+
+        var req = URLRequest(url: url)
+        req.setValue(key, forHTTPHeaderField: "0x-api-key")
+        req.setValue("v2", forHTTPHeaderField: "0x-version")
+        req.timeoutInterval = 20
+
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .failure(.badResponse("Network error"))
+        }
+        if let reason = (json["reason"] as? String) ?? (json["message"] as? String), json["transaction"] == nil {
+            return .failure(.badResponse(reason))
+        }
+        guard let tx = json["transaction"] as? [String: Any],
+              let to = tx["to"] as? String,
+              let callData = tx["data"] as? String,
+              let buyAmount = json["buyAmount"] as? String else {
+            return .failure(.badResponse("No route found for this pair/amount"))
+        }
+        let minBuy = (json["minBuyAmount"] as? String) ?? buyAmount
+        let value = (tx["value"] as? String).map { hexFromDecimalString($0) } ?? "0x0"
+
+        // Allowance needed only when selling an ERC-20 (native ETH needs none).
+        var spender: String? = nil
+        if sell.contractAddress != nil,
+           let issues = json["issues"] as? [String: Any],
+           let allowance = issues["allowance"] as? [String: Any],
+           let s = allowance["spender"] as? String {
+            spender = s
+        }
+
+        return .success(SwapQuote(
+            sellToken: sell, buyToken: buy, sellAmount: sellAmount,
+            buyAmountRaw: WeiConverter.decimalStringToBytes(buyAmount),
+            minBuyAmountRaw: WeiConverter.decimalStringToBytes(minBuy),
+            to: to, data: callData, value: value, needsAllowanceTo: spender))
+    }
+
+    /// 0x returns `value` as a decimal string; our tx builder wants hex.
+    private static func hexFromDecimalString(_ s: String) -> String {
+        if s.hasPrefix("0x") { return s }
+        let bytes = WeiConverter.decimalStringToBytes(s)
+        if bytes.isEmpty || (bytes.count == 1 && bytes[0] == 0) { return "0x0" }
+        return "0x" + bytes.map { String(format: "%02x", $0) }.joined()
+    }
+}

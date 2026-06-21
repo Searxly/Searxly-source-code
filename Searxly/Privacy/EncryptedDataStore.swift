@@ -1,0 +1,203 @@
+//
+//  EncryptedDataStore.swift
+//  Searxly
+//
+//  Focused store responsible for reading and writing the main AppData.json
+//  with optional transparent encryption.
+//
+//  This file isolates all encryption-related I/O so the rest of the app
+//  can remain relatively simple and low-risk.
+//
+
+import Foundation
+
+enum EncryptedDataStore {
+
+    private static let metadataFileName = "EncryptionMetadata.json"
+
+    enum DataLoadResult {
+        case success(AppData)
+        case missingFile
+        case decryptionFailed(DataEncryptor.EncryptionError)
+        case decodeFailed(Error)
+    }
+
+    // MARK: - Public API (used by Persistence)
+
+    static func loadDetailed() -> DataLoadResult {
+        let url = Persistence.appDataFileURL()
+
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return .missingFile
+        }
+
+        do {
+            let rawData = try Data(contentsOf: url)
+
+            if isLikelyEncrypted(rawData) {
+                let decrypted = try DataEncryptor.decryptWithStoredKey(rawData)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                return .success(try decoder.decode(AppData.self, from: decrypted))
+            } else {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                return .success(try decoder.decode(AppData.self, from: rawData))
+            }
+        } catch let error as DataEncryptor.EncryptionError {
+            print("EncryptedDataStore: CRITICAL — Encryption error during load: \(error)")
+            print("EncryptedDataStore: Blocking recovery UI — data was not modified.")
+            notifyRecoveryRequired(for: error)
+            return .decryptionFailed(error)
+        } catch {
+            print("EncryptedDataStore: Failed to load data — \(error). Returning defaults.")
+            backupCorruptFile(at: url)
+            return .decodeFailed(error)
+        }
+    }
+
+    static func load() -> AppData {
+        switch loadDetailed() {
+        case .success(let data):
+            return data
+        case .missingFile:
+            return AppData()
+        case .decryptionFailed, .decodeFailed:
+            return AppData()
+        }
+    }
+
+    static func save(_ appData: AppData) {
+        let url = Persistence.appDataFileURL()
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let jsonData = try encoder.encode(appData)
+
+            if isEncryptionEnabled() {
+                if let key = KeychainManager.loadKey() {
+                    let encrypted = try DataEncryptor.encrypt(jsonData, using: key)
+                    try encrypted.write(to: url, options: [.atomic, .completeFileProtection])
+                    // (success logging removed to reduce console spam)
+                } else {
+                    // CRITICAL: Encryption was requested but we have no key in the Keychain.
+                    // Do NOT silently fall back to plaintext — this would defeat the user's explicit choice.
+                    print("EncryptedDataStore: CRITICAL ERROR — Encryption is enabled but no key exists in Keychain. Refusing to write unprotected data.")
+                    print("EncryptedDataStore: Your data was NOT saved to avoid leaking it in plaintext. Please re-enable encryption or restore your recovery key.")
+                    // We leave the file untouched rather than risk writing plaintext.
+                    return
+                }
+            } else {
+                try jsonData.write(to: url, options: [.atomic, .completeFileProtection])
+                // (plaintext success log removed)
+            }
+        } catch {
+            print("EncryptedDataStore: Failed to save data — \(error)")
+        }
+    }
+
+    // MARK: - Encryption Toggle Management (now uses a small unencrypted metadata file next to AppData.json)
+
+    static func isEncryptionEnabled() -> Bool {
+        let metadataURL = encryptionMetadataURL()
+
+        // If the main data file looks encrypted, trust the content over missing/broken metadata.
+        let mainURL = Persistence.appDataFileURL()
+        if FileManager.default.fileExists(atPath: mainURL.path) {
+            if let raw = try? Data(contentsOf: mainURL), isLikelyEncrypted(raw) {
+                return true
+            }
+        }
+
+        guard FileManager.default.fileExists(atPath: metadataURL.path) else {
+            return false
+        }
+        do {
+            let data = try Data(contentsOf: metadataURL)
+            let decoder = JSONDecoder()
+            let meta = try decoder.decode(EncryptionMetadata.self, from: data)
+            return meta.encryptionEnabled
+        } catch {
+            print("EncryptedDataStore: Failed to read encryption metadata — \(error)")
+            return false
+        }
+    }
+
+    /// Enables or disables encryption for future saves.
+    /// Writes a small metadata file. Does NOT automatically migrate existing data.
+    static func setEncryptionEnabled(_ enabled: Bool) {
+        let metadataURL = encryptionMetadataURL()
+        let meta = EncryptionMetadata(encryptionEnabled: enabled)
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted]
+            let data = try encoder.encode(meta)
+            // Use the strongest practical protection for the metadata toggle file
+            try data.write(to: metadataURL, options: [.atomic, .completeFileProtection])
+            print("EncryptedDataStore: Encryption enabled set to \(enabled)")
+        } catch {
+            print("EncryptedDataStore: Failed to write encryption metadata — \(error)")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private static func encryptionMetadataURL() -> URL {
+        let appDir = Persistence.appDataFileURL().deletingLastPathComponent()
+        return appDir.appendingPathComponent(metadataFileName)
+    }
+
+    /// Exposed as `internal` so `@testable import Searxly` tests can verify format detection.
+    static func looksEncrypted(_ data: Data) -> Bool { isLikelyEncrypted(data) }
+
+    private static func isLikelyEncrypted(_ data: Data) -> Bool {
+        // Newer format: 4-byte magic "SENC" + 1-byte version + AES-GCM combined (nonce 12 + tag 16 + ≥1 byte)
+        // Minimum: 5 header bytes + 29 bytes AES-GCM overhead = 34 bytes.
+        if data.count >= 34, data.prefix(4) == Data("SENC".utf8) {
+            return true
+        }
+
+        // Old format: single version byte (1) followed by raw AES-GCM combined output.
+        // AES-GCM combined = 12-byte nonce + 16-byte tag + ≥1 byte ciphertext = 29 bytes minimum.
+        // Without this minimum length guard, any file whose first byte happens to be 0x01 would
+        // be misidentified as encrypted, causing a decrypt failure and silent data loss.
+        if data.count >= 30, data[0] == 1 {
+            return true
+        }
+
+        return false
+    }
+
+    private struct EncryptionMetadata: Codable {
+        var encryptionEnabled: Bool
+    }
+
+    /// Renames the unreadable AppData.json to AppData.json.broken-<timestamp> (preserves both plaintext and SENC encrypted bytes).
+    /// This prevents the common failure mode where a decode error for one sub-section (e.g. a new field in WalletAccount)
+    /// causes the entire load to return defaults, and a subsequent partial-save then clobbers all other settings
+    /// (SearXNG instances, performance, history, VPN profiles, etc.).
+    private static func notifyRecoveryRequired(for error: DataEncryptor.EncryptionError) {
+        if Thread.isMainThread {
+            EncryptionRecoveryManager.shared.markDecryptionFailed(error)
+        } else {
+            DispatchQueue.main.async {
+                EncryptionRecoveryManager.shared.markDecryptionFailed(error)
+            }
+        }
+    }
+
+    private static func backupCorruptFile(at url: URL) {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        let ts = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let backupURL = url.deletingLastPathComponent().appendingPathComponent("AppData.json.broken-\(ts)")
+        do {
+            try FileManager.default.moveItem(at: url, to: backupURL)
+            print("EncryptedDataStore: Backed up unreadable data file to \(backupURL.lastPathComponent). You can restore it manually after fixing the decode issue.")
+        } catch {
+            print("EncryptedDataStore: Could not backup corrupt file: \(error)")
+        }
+    }
+}

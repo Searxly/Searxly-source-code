@@ -1,0 +1,34 @@
+{# 
+  Searxly premium minimal category tabs.
+  Icon-free, text-only, xAI/SpaceX-inspired restrained tabs.
+  Rendered inside the search form so category buttons act as submit selectors.
+  "general" is presented as "All" for classic search engine tab feel.
+#}
+{%- set cat_labels = {
+    'general': 'All',
+    'images': 'Images',
+    'videos': 'Videos',
+    'news': 'News',
+    'map': 'Maps',
+    'music': 'Music',
+    'it': 'IT',
+    'science': 'Science',
+    'files': 'Files',
+    'social media': 'Social',
+    'apps': 'Apps',
+    'dictionaries': 'Dict',
+    'radio': 'Radio',
+    'TV': 'TV',
+} -%}
+<div id="categories" class="search_categories">
+  <div id="categories_container">
+    {%- for category in categories -%}
+      <button type="submit"
+              name="category_{{ category }}"
+              class="category searxly-cat-tab{% if category in selected_categories %} active{% endif %}"
+              value="1">
+        {{- cat_labels.get(category, category|capitalize) -}}
+      </button>
+    {%- endfor -%}
+  </div>
+</div>

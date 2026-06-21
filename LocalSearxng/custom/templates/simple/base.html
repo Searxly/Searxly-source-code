@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html class="no-js theme-{{ preferences.get_value('simple_style') or 'dark' }} center-alignment-{{ preferences.get_value('center_alignment') and 'yes' or 'no' }}" lang="{{ locale_rfc5646 }}" {% if rtl %} dir="rtl"{% endif %}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noarchive">
+  <title>{% block title %}{% endblock %}{{ instance_name or "Searxly" }}</title>
+
+  <!-- Keep the core SearXNG JS bundle for autocomplete, form handling, etc. -->
+  <script type="module" src="{{ url_for('static', filename='sxng-core.min.js') }}" client_settings="{{ client_settings }}"></script>
+
+  <!-- Original core styles (kept for behavior). Our searxly.css loads after and wins. -->
+  {% if rtl %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='sxng-rtl.min.css') }}" type="text/css" media="screen">
+  {% else %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='sxng-ltr.min.css') }}" type="text/css" media="screen">
+  {% endif %}
+
+  <!-- Our premium xAI / SpaceX-inspired Searxly theme (monochrome, massive breathing room) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes/simple/searxly.css') }}" type="text/css" media="screen">
+
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" sizes="any">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+</head>
+<body class="{{ endpoint }}_endpoint searxly-premium">
+
+  <!-- Slim elegant top navigation (xAI/SpaceX minimal) -->
+  <nav class="searxly-nav">
+    <a href="{{ url_for('index') }}" class="logo">Searxly</a>
+    <div class="nav-right">
+      <a href="{{ url_for('preferences') }}">Preferences</a>
+    </div>
+  </nav>
+
+  <main>
+    {% if errors %}
+      <div class="dialog-error" role="alert" style="max-width:720px;margin:16px auto;padding:0 24px;">
+        <ul>{% for message in errors %}<li>{{ message }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+
+    {% block header %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Ultra-minimal footer (hidden on most pages via CSS, kept for legal if needed) -->
+  <footer style="display:none;"></footer>
+</body>
+</html>
