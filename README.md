@@ -31,9 +31,6 @@ To keep this a source-for-review repository rather than a downloadable app, the 
 
 The Xcode project still *references* these omitted files, so a fresh clone will show missing-file references and will not compile into a shippable app. This is intentional: it gives visibility into the surrounding implementation while official, code-signed releases go through proper distribution channels. The maintainer keeps the complete working copy privately.
 
-The repository has been sanitized for public visibility:
-- Personal information and machine-specific paths have been removed
-- Secrets have been replaced with clear placeholders (`settings.yml` is generated from `settings.yml.example` at runtime)
 
 ## License
 
@@ -54,7 +51,7 @@ Do your own research. All funds go directly to project development.
 
 ## Current Feature Status
 
-- **Local SearXNG: Fully automatic. One-click in onboarding or Settings → Instances. Creates `~/searxng-local/`, injects a strong secret, deploys the premium Searxly theme, runs `docker compose`, and waits for the instance to be ready.
+- **Local SearXNG**: Fully automatic. One-click in onboarding or Settings → Instances. Creates `~/searxng-local/`, injects a strong secret, deploys the premium Searxly theme, runs `docker compose`, and waits for the instance to be ready.
 - **VPN**: The WireGuard implementation is omitted from this public source (see "What's omitted"). In maintainer builds it requires a paid Apple Developer membership + a provisioning profile with the `packet-tunnel-provider` capability.
 - **Wallet**: A self-custody Base L2 wallet is included (`Searxly/Wallet/`). Keys never leave the device — the seed is encrypted in the macOS Keychain (AES-GCM + PBKDF2, device-only, never iCloud-synced).
 
