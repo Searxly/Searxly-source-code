@@ -10,6 +10,7 @@
 		BF1E14582FE07FB70064DE5C /* SearxlyDockerHelper.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = BF1E144D2FE07FB70064DE5C /* SearxlyDockerHelper.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BFA000030000000000000001 /* P256K in Frameworks */ = {isa = PBXBuildFile; productRef = BFA000020000000000000001 /* P256K */; };
 		BFA000050000000000000001 /* libsecp256k1 in Frameworks */ = {isa = PBXBuildFile; productRef = BFA000040000000000000001 /* libsecp256k1 */; };
+		BFB000030000000000000001 /* Bulwark in Frameworks */ = {isa = PBXBuildFile; productRef = BFB000020000000000000001 /* Bulwark */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,6 +77,7 @@
 			files = (
 				BFA000030000000000000001 /* P256K in Frameworks */,
 				BFA000050000000000000001 /* libsecp256k1 in Frameworks */,
+				BFB000030000000000000001 /* Bulwark in Frameworks */,
 			);
 		};
 		BF1E144A2FE07FB70064DE5C /* Frameworks */ = {
@@ -130,6 +132,7 @@
 			packageProductDependencies = (
 				BFA000020000000000000001 /* P256K */,
 				BFA000040000000000000001 /* libsecp256k1 */,
+				BFB000020000000000000001 /* Bulwark */,
 			);
 			productName = Searxly;
 			productReference = BF13CDAE2FC3421E0081D8C8 /* Searxly.app */;
@@ -183,6 +186,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */,
+				BFB000010000000000000001 /* XCRemoteSwiftPackageReference "bulwark" */,
 			);
 			preferredProjectObjectVersion = 110;
 			productRefGroup = BF13CDAF2FC3421E0081D8C8 /* Products */;
@@ -520,6 +524,14 @@
 				minimumVersion = 0.17.0;
 			};
 		};
+		BFB000010000000000000001 /* XCRemoteSwiftPackageReference "bulwark" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Myrhex-x/bulwark";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -532,6 +544,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */;
 			productName = libsecp256k1;
+		};
+		BFB000020000000000000001 /* Bulwark */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BFB000010000000000000001 /* XCRemoteSwiftPackageReference "bulwark" */;
+			productName = Bulwark;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
