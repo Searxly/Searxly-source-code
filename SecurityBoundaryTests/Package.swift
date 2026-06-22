@@ -9,9 +9,10 @@ let package = Package(
     name: "SecurityBoundaryTests",
     platforms: [.macOS(.v14)],
     dependencies: [
-        // Pinned to the same revision the app ships (app Package.resolved, tag 0.3.0).
+        // Pinned to the current 0.3.0 commit by SHA so it resolves on a clean machine / CI. (A revision
+        // pin avoids the version-fingerprint conflict from the tag having been re-pointed upstream.)
         .package(url: "https://github.com/Myrhex-x/bulwark",
-                 revision: "fbb30671826a77c2d4624d9934142e5892025e63"),
+                 revision: "34c754bb2356687c9bcf7675550203031b17f33d"),
     ],
     targets: [
         .executableTarget(
