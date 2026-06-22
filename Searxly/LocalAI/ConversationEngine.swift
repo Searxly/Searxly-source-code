@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import os
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -126,12 +127,12 @@ final class ConversationEngine {
         let raw: String
         if let tools, !tools.isEmpty, provider.capabilities.supportsNativeTools {
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] Engine: routing to native tools generate (tools=\(tools.count))")
+                Log.ai.info("[LocalAI] Engine: routing to native tools generate (tools=\(tools.count))")
             }
             raw = try await provider.generate(prompt: prompt, instructions: instructions, tools: tools)
         } else {
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] Engine: routing to plain generate (no tools or no support)")
+                Log.ai.info("[LocalAI] Engine: routing to plain generate (no tools or no support)")
             }
             raw = try await provider.generate(prompt: prompt, instructions: instructions)
         }
@@ -159,6 +160,39 @@ final class ConversationEngine {
         return provider.generateStream(prompt: prompt, instructions: instructions)
     }
 
+    /// Cloud-only agentic turn: lets the cloud model call the provided tools (web_search /
+    /// open_website) and returns its final answer plus the sources gathered for citations.
+    /// Falls back to a plain generate when the active provider isn't the cloud.
+    func generateCloudWithTools(
+        prompt: String,
+        instructions: String?,
+        tools: [CloudTool]
+    ) async throws -> CloudToolResult {
+        guard let cloud = manager.currentIntelligenceProvider as? CloudIntelligenceProvider else {
+            let text = try await generate(prompt: prompt, instructions: instructions)
+            return CloudToolResult(text: text, sources: [], toolsUsed: [])
+        }
+
+        let result = try await cloud.generateWithTools(
+            systemPrompt: instructions,
+            userPrompt: prompt,
+            tools: tools
+        )
+
+        let context = PostProcessingContext(
+            hasCustomInstructions: lastHasCustomInstructions,
+            usedTools: !result.toolsUsed.isEmpty,
+            isToolFollowUp: false,
+            isSuggestion: false,
+            lowMemoryMode: manager.preferences.lowMemoryMode,
+            // Keep [n] markers so they match the clickable source chips (only meaningful when we
+            // actually have sources, i.e. a web_search happened this turn).
+            preserveCitations: !result.sources.isEmpty
+        )
+        let polished = ResponsePostProcessor.process(result.text, context: context)
+        return CloudToolResult(text: polished, sources: result.sources, toolsUsed: result.toolsUsed)
+    }
+
     /// Lightweight context summary for UI (e.g. chips).
     var contextSummary: String? {
         var parts: [String] = []
@@ -178,11 +212,15 @@ final class ConversationEngine {
     /// Keeps them very short (Grok-style) so they take almost no space.
     /// All on-device and private.
     func suggestFollowUpPrompts(recentContext: String, lastAssistantResponse: String) async throws -> [String] {
+        // Tiny throwaway generation — never bill the cloud 70B for it. Borrow the on-device model when
+        // chat is on cloud; if no free on-device model is available, skip suggestions entirely.
+        guard let provider = manager.auxiliaryProvider() else { return [] }
+
         let prompt = AIPromptLibrary.followUpSuggestions(
             recentContext: recentContext,
             lastResponse: lastAssistantResponse
         )
-        let raw = try await generate(prompt: prompt, instructions: nil)
+        let raw = try await provider.generate(prompt: prompt, instructions: nil)
         let lines = raw
             .split(whereSeparator: { $0.isNewline })
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

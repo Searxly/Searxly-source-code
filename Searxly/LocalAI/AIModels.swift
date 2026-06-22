@@ -384,6 +384,9 @@ struct ChatMessage: Codable, Identifiable, Equatable {
     let role: Role
     let text: String
     let timestamp: Date
+    /// Sources behind a grounded answer (cloud web_search). Rendered as clickable citation chips.
+    /// nil/empty for ordinary messages. Backward-compatible (decodeIfPresent).
+    var sources: [Citation]?
 
     enum Role: String, Codable, Equatable {
         case user
@@ -391,19 +394,21 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         case system   // context injection, never shown directly to user in UI
     }
 
-    init(role: Role, text: String, timestamp: Date = Date()) {
+    init(role: Role, text: String, timestamp: Date = Date(), sources: [Citation]? = nil) {
         self.id = UUID()
         self.role = role
         self.text = text
         self.timestamp = timestamp
+        self.sources = sources
     }
 
     /// Internal init for streaming updates (re-uses existing id so the bubble stays the same in the list).
-    init(id: UUID, role: Role, text: String, timestamp: Date = Date()) {
+    init(id: UUID, role: Role, text: String, timestamp: Date = Date(), sources: [Citation]? = nil) {
         self.id = id
         self.role = role
         self.text = text
         self.timestamp = timestamp
+        self.sources = sources
     }
 
     init(from decoder: Decoder) throws {
@@ -412,10 +417,11 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         role = try container.decode(Role.self, forKey: .role)
         text = try container.decode(String.self, forKey: .text)
         timestamp = try container.decode(Date.self, forKey: .timestamp)
+        sources = try container.decodeIfPresent([Citation].self, forKey: .sources)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case role, text, timestamp
+        case role, text, timestamp, sources
     }
 }
 

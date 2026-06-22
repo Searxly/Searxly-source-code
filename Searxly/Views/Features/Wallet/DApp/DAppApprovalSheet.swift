@@ -68,6 +68,9 @@ struct DAppApprovalSheet: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Color.white.opacity(0.06), in: Capsule())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Requesting site")
+            .accessibilityValue(displayOrigin)
         }
         .padding(.top, 22)
         .padding(.bottom, 16)
@@ -99,8 +102,8 @@ struct DAppApprovalSheet: View {
                 connectBody
             case .signMessage(let text):
                 signBody(detailTitle: "Message", detail: text)
-            case .signTypedData(let summary):
-                signBody(detailTitle: "Typed data", detail: summary)
+            case .signTypedData(let preview):
+                typedDataBody(preview)
             case .transaction(let preview):
                 transactionBody(preview)
             case .switchChain(let chainName):
@@ -154,6 +157,8 @@ struct DAppApprovalSheet: View {
         .padding(12)
         .background(WalletTheme.negative.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(WalletTheme.negative.opacity(0.4), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private var connectBody: some View {
@@ -184,6 +189,60 @@ struct DAppApprovalSheet: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    /// EIP-712 typed-data request — shows the actual decoded fields the user is signing, plus a loud
+    /// warning for unlimited approvals and for a domain chain that doesn't match the active network.
+    private func typedDataBody(_ p: TypedDataPreview) -> some View {
+        VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("SIGNING").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color(white: 0.4))
+                Text(p.domainName.map { "\($0) · \(p.primaryType)" } ?? p.primaryType)
+                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if p.chainMismatch {
+                warningBanner("This request is for chain \(p.chainId.map(String.init) ?? "?"), but your wallet is on \(p.activeChainName). Only continue if you understand why.")
+            }
+
+            if !p.lines.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(p.lines.enumerated()), id: \.element.id) { idx, line in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(line.label)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Color(white: 0.55))
+                                .padding(.leading, CGFloat(line.indent) * 12)
+                            Spacer(minLength: 8)
+                            VStack(alignment: .trailing, spacing: 1) {
+                                if !line.value.isEmpty {
+                                    Text(line.value)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundStyle(line.flag == "UNLIMITED" ? WalletTheme.negative : .white)
+                                        .multilineTextAlignment(.trailing)
+                                        .textSelection(.enabled)
+                                }
+                                if let flag = line.flag, flag != "UNLIMITED" {
+                                    Text(flag).font(.system(size: 9)).foregroundStyle(Color(white: 0.45))
+                                }
+                            }
+                        }
+                        .padding(.vertical, 7).padding(.horizontal, 12)
+                        if idx < p.lines.count - 1 { Divider().opacity(0.06) }
+                    }
+                }
+                .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+            }
+
+            if p.hasUnlimited {
+                warningBanner("This grants UNLIMITED spending approval by signature. Only continue if you fully trust this site.")
+            } else {
+                safetyNote
+            }
+            authSection
         }
     }
 
@@ -221,7 +280,8 @@ struct DAppApprovalSheet: View {
             }
 
             VStack(spacing: 0) {
-                detailRow("To", value: abbreviated(preview.to), mono: true)
+                detailRow("To", value: abbreviated(preview.to), mono: true,
+                          accessibilityValueOverride: "address \(preview.to)")
                 Divider().opacity(0.08)
                 detailRow("Amount", value: "\(preview.valueEth) \(wallet.activeChain.nativeSymbol)")
                 Divider().opacity(0.08)
@@ -269,6 +329,8 @@ struct DAppApprovalSheet: View {
             Text(text).font(.system(size: 11)).foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private func runSimulation(_ p: TxPreview) async {
@@ -350,13 +412,18 @@ struct DAppApprovalSheet: View {
                     Text("Enter your PIN to authorize").font(.system(size: 12)).foregroundStyle(Color(white: 0.4))
                 }
 
-                HStack(spacing: 12) {
-                    ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
-                        Circle().fill(i < pin.count ? Color.white : Color(white: 0.2)).frame(width: 11, height: 11)
+                if !WalletFeatures.usesPassphrase {
+                    HStack(spacing: 12) {
+                        ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
+                            Circle().fill(i < pin.count ? Color.white : Color(white: 0.2)).frame(width: 11, height: 11)
+                        }
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("PIN entry")
+                    .accessibilityValue("\(pin.count) of \(WalletConfig.pinLength) digits entered")
                 }
                 if pinError {
-                    Text("Incorrect PIN").font(.system(size: 12)).foregroundStyle(Color(red: 1, green: 0.35, blue: 0.35))
+                    Text("Incorrect").font(.system(size: 12)).foregroundStyle(Color(red: 1, green: 0.35, blue: 0.35))
                 }
                 PINKeypad(pin: $pin, maxLength: WalletConfig.pinLength) { authorizePIN() }
                     .frame(maxWidth: 220)
@@ -398,7 +465,11 @@ struct DAppApprovalSheet: View {
         }
     }
 
-    private func detailRow(_ label: String, value: String, mono: Bool = false) -> some View {
+    /// `accessibilityValueOverride` lets a row read its FULL value to VoiceOver even when the visible
+    /// text is abbreviated — critical for the recipient address, where a hidden middle could disguise
+    /// where funds are going.
+    private func detailRow(_ label: String, value: String, mono: Bool = false,
+                           accessibilityValueOverride: String? = nil) -> some View {
         HStack {
             Text(label).font(.system(size: 12)).foregroundStyle(Color(white: 0.4))
             Spacer()
@@ -406,6 +477,9 @@ struct DAppApprovalSheet: View {
                 .foregroundStyle(.white)
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(accessibilityValueOverride ?? value)
     }
 
     private var safetyNote: some View {
@@ -425,6 +499,8 @@ struct DAppApprovalSheet: View {
         .padding(12)
         .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Color.orange.opacity(0.25), lineWidth: 0.8))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private func abbreviated(_ address: String) -> String {

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 import WebKit
 
@@ -406,7 +407,7 @@ extension BrowserState {
         showingWebContent = false
         // The vault tab does not participate in hibernation or auto-cleanup (enforced by kind checks elsewhere).
         #if DEBUG
-        print("[Passwords] Created and selected in-app password vault tab.")
+        Log.web.info("[Passwords] Created and selected in-app password vault tab.")
         #endif
     }
     // Tab management (sidebar actions call these)

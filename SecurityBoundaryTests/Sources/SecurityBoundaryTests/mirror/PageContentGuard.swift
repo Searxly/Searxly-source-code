@@ -1,0 +1,1 @@
+../../../../Searxly/LocalAI/Prompting/PageContentGuard.swift

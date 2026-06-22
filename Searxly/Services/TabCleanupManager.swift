@@ -19,6 +19,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 
 extension Notification.Name {
@@ -204,7 +205,7 @@ final class TabCleanupManager {
             object: nil,
             userInfo: ["count": count, "reason": reason]
         )
-        print("[AutoCleanup] Removed \(count) tab(s) due to \(reason)")
+        Log.web.info("[AutoCleanup] Removed \(count) tab(s) due to \(reason)")
     }
 
     /// Convenience for the new tab creation path (count-based limit)

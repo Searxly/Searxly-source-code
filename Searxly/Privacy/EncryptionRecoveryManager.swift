@@ -59,4 +59,18 @@ final class EncryptionRecoveryManager {
         PrivacyManager.shared.syncEncryptionStateFromDisk()
         NotificationCenter.default.post(name: .encryptionRecoverySucceeded, object: nil)
     }
+
+    /// Last-resort escape hatch: erase the unreadable local data and start the app fresh.
+    ///
+    /// For when the encryption key is permanently unavailable (orphaned by an app-identity change) and
+    /// the user has no recovery code or backup. Destroys local browsing history / bookmarks / instances /
+    /// settings; does NOT touch the wallet seed or saved passwords (separate stores). Also drops the
+    /// orphaned Keychain key so a clean encryption key can be generated if the user re-enables encryption.
+    func startFresh() {
+        EncryptedDataStore.eraseLocalData()
+        KeychainManager.deleteKey()
+        clearRecoveryState()
+        PrivacyManager.shared.syncEncryptionStateFromDisk()
+        NotificationCenter.default.post(name: .encryptionRecoverySucceeded, object: nil)
+    }
 }

@@ -20,8 +20,13 @@ struct PasswordVaultTabView: View {
     @State private var editingEntry: PasswordVaultEntry?
     @State private var entryToDelete: PasswordVaultEntry?
     @State private var statusMessage: String?
+    @State private var health: [UUID: PasswordHealth.Report] = [:]   // offline password-health reports
 
     private var vault = PasswordVaultManager.shared
+
+    /// Recomputes password health locally (reuse / weak / known-common). Only meaningful while the
+    /// vault is unlocked, which is the only time this content is on screen.
+    private func refreshHealth() { health = vault.healthReports() }
 
     private var filteredEntries: [PasswordVaultEntry] {
         vault.entries(matching: searchText)
@@ -131,6 +136,9 @@ struct PasswordVaultTabView: View {
                     statusBanner(statusMessage)
                 }
 
+                let riskCount = health.values.filter { $0.atRisk }.count
+                if riskCount > 0 { attentionBanner(riskCount) }
+
                 if filteredEntries.isEmpty {
                     emptyState
                 } else {
@@ -144,6 +152,44 @@ struct PasswordVaultTabView: View {
             .padding(.vertical, 24)
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
+        }
+        .onAppear { refreshHealth() }
+        .onChange(of: vault.entries) { _, _ in refreshHealth() }
+    }
+
+    /// Banner summarising how many saved passwords are reused, weak, or known-breached.
+    private func attentionBanner(_ count: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.shield.fill").foregroundStyle(.orange)
+            Text("\(count) password\(count == 1 ? "" : "s") need attention")
+                .font(.caption.weight(.medium))
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    /// Small per-entry risk chip (highest-severity issue first). Empty for healthy passwords.
+    @ViewBuilder
+    private func healthBadge(_ entry: PasswordVaultEntry) -> some View {
+        if let report = health[entry.id], report.atRisk {
+            let (label, icon): (String, String) =
+                report.common ? ("Known password", "exclamationmark.shield")
+                : report.reused ? ("Reused", "arrow.triangle.2.circlepath")
+                : ("Weak", "exclamationmark.triangle")
+            HStack(spacing: 3) {
+                Image(systemName: icon).font(.system(size: 9, weight: .semibold))
+                Text(label).font(.system(size: 10, weight: .medium))
+            }
+            .foregroundStyle(.orange)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.orange.opacity(0.12), in: Capsule())
         }
     }
 
@@ -468,8 +514,11 @@ struct PasswordVaultTabView: View {
                 .frame(width: 28, height: 28)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.username)
-                    .font(.subheadline.weight(.medium))
+                HStack(spacing: 6) {
+                    Text(entry.username)
+                        .font(.subheadline.weight(.medium))
+                    healthBadge(entry)
+                }
                 Text(entry.domain)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -495,8 +544,11 @@ struct PasswordVaultTabView: View {
     private func entryRow(_ entry: PasswordVaultEntry) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.username)
-                    .font(.body.weight(.medium))
+                HStack(spacing: 6) {
+                    Text(entry.username)
+                        .font(.body.weight(.medium))
+                    healthBadge(entry)
+                }
                 if let notes = entry.notes, !notes.isEmpty {
                     Text(notes)
                         .font(.caption)

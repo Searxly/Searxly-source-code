@@ -61,8 +61,10 @@ enum WalletConfig {
     // MARK: - HD derivation path (BIP-44, Ethereum coin type = 60)
     static let derivationPath        = "m/44'/60'/0'/0"
 
-    // MARK: - PIN policy
+    // MARK: - PIN / passphrase policy
     static let pinLength             = 6
+    /// Minimum length for an alphanumeric passphrase (the high-security alternative to the 6-digit PIN).
+    static let minPassphraseLength   = 8
     static let recoveryCodeLength    = 32   // hex chars (16 random bytes)
 
     // MARK: - UserDefaults keys
@@ -70,6 +72,7 @@ enum WalletConfig {
         static let walletConfigured  = "Wallet.isConfigured"
         static let pinSalt           = "Wallet.pinSalt"
         static let pinHash           = "Wallet.pinHash"
+        static let usesPassphrase    = "Wallet.usesPassphrase"   // secret is an alphanumeric passphrase, not a 6-digit PIN
         static let recoveryHash      = "Wallet.recoveryHash"
         static let customRPCURL      = "Wallet.customRPCURL"
         static let lastKnownAddress  = "Wallet.lastKnownAddress"
@@ -158,6 +161,14 @@ enum WalletAutoLock: String, CaseIterable, Identifiable {
 enum WalletFeatures {
     private static func flag(_ key: String) -> Bool { UserDefaults.standard.bool(forKey: key) }
     private static func setFlag(_ key: String, _ on: Bool) { UserDefaults.standard.set(on, forKey: key) }
+
+    /// Whether the wallet's unlock secret is a long alphanumeric passphrase (true) or the 6-digit PIN
+    /// (false, default). Set at setup or via Settings → Change PIN/Passphrase. Drives which input the
+    /// secret-entry control shows; the crypto (PBKDF2 + verifier) is identical for both.
+    static var usesPassphrase: Bool {
+        get { flag(WalletConfig.Keys.usesPassphrase) }
+        set { setFlag(WalletConfig.Keys.usesPassphrase, newValue) }
+    }
 
     /// Website wallet exposure (window.ethereum). Defaults to ON when unset.
     static var dappProvider: Bool {

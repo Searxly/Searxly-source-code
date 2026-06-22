@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 @preconcurrency import UserNotifications
 import AppKit   // For NSApp.isActive checks
@@ -138,7 +139,7 @@ final class NotificationManager {
         // to avoid capturing the non-Sendable center value (Swift 6 concurrency requirement).
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             guard granted else {
-                if let error { print("NotificationManager: system notification auth denied: \(error)") }
+                if let error { Log.app.error("NotificationManager: system notification auth denied: \(error.localizedDescription, privacy: .public)") }
                 return
             }
 
@@ -160,7 +161,7 @@ final class NotificationManager {
 
             UNUserNotificationCenter.current().add(request) { addError in
                 if let addError {
-                    print("NotificationManager: failed to deliver system notification: \(addError)")
+                    Log.app.error("NotificationManager: failed to deliver system notification: \(addError)")
                 }
             }
         }

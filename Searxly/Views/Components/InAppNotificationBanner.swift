@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import os
 
 struct InAppNotificationBanner: View {
     let notification: AppNotification
@@ -169,7 +170,7 @@ struct InAppNotificationBanner: View {
             glassEnabled: true,
             toolbarMaterial: .regular
         ) {
-            print("dismiss")
+            Log.app.info("dismiss")
         }
 
         InAppNotificationBanner(
@@ -182,7 +183,7 @@ struct InAppNotificationBanner: View {
             glassEnabled: false,
             toolbarMaterial: .regular
         ) {
-            print("dismiss")
+            Log.app.info("dismiss")
         }
     }
     .padding()

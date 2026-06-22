@@ -14,6 +14,7 @@
 
 import AppKit
 import Foundation
+import os
 import LocalAuthentication
 import UniformTypeIdentifiers
 import WebKit
@@ -101,7 +102,7 @@ final class PrivacyManager {
         }
 
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("PrivacyManager: Fresh install defaults applied (history off, encryption on, private tabs default, app lock: \(deviceAuthAvailable))")
+            Log.privacy.info("PrivacyManager: fresh install defaults applied (history off, encryption on, private tabs default, app lock: \(deviceAuthAvailable, privacy: .public))")
         }
     }
 
@@ -162,8 +163,7 @@ final class PrivacyManager {
                 let newKey = DataEncryptor.generateKey()
                 let saved = KeychainManager.saveKey(newKey)
                 if !saved {
-                    print("PrivacyManager: CRITICAL ERROR - Failed to save newly generated encryption key to Keychain!")
-                    print("PrivacyManager: Encryption will be disabled to prevent data from being written in an unrecoverable state.")
+                    Log.security.error("PrivacyManager: CRITICAL — failed to save new encryption key to Keychain; disabling encryption to avoid unrecoverable writes")
                     // Revert the flag to avoid leaving the user in a broken state
                     dataEncryptionEnabled = false
                     EncryptedDataStore.setEncryptionEnabled(false)
@@ -171,38 +171,36 @@ final class PrivacyManager {
                     return
                 }
                 lastEncryptionRecoveryCode = newKey.base64EncodedString()
-                print("PrivacyManager: Generated and stored new encryption key for first-time encryption.")
+                Log.security.notice("PrivacyManager: generated and stored new encryption key for first-time encryption")
             } else {
                 lastEncryptionRecoveryCode = KeychainManager.exportKeyAsRecoveryCode()
-                print("PrivacyManager: Using existing encryption key.")
+                Log.security.info("PrivacyManager: using existing encryption key")
             }
 
             // Force a re-save. EncryptedDataStore will now encrypt because the flag is set.
             let currentData = Persistence.load()
             Persistence.save(currentData)
-            print("PrivacyManager: Existing data has been successfully re-saved in encrypted form.")
+            Log.security.info("PrivacyManager: existing data re-saved in encrypted form")
 
         } else if !enabled && previousState {
             // Turning encryption OFF — decrypt by forcing a plaintext save.
             let currentData = Persistence.load()
             Persistence.save(currentData)
-            print("PrivacyManager: Data encryption disabled. Current data written as plaintext.")
-
             // Phase 2 Policy: When turning encryption OFF, we keep the key by default.
             // This allows the user to easily re-enable encryption later without data loss
             // (old encrypted backups would still be decryptable).
             // The user can explicitly delete the key later if they want (via future recovery UI).
-            print("PrivacyManager: Key retained after disabling encryption (per Phase 2 policy).")
+            Log.security.notice("PrivacyManager: data encryption disabled; data written as plaintext, key retained (Phase 2 policy)")
         }
 
-        print("PrivacyManager: Data encryption set to \(enabled)")
+        Log.security.info("PrivacyManager: data encryption set to \(enabled, privacy: .public)")
     }
 
     /// Explicitly deletes the encryption key from the Keychain.
     /// Should only be called after user confirmation (especially when encryption is currently enabled).
     func deleteEncryptionKey() {
         let deleted = KeychainManager.deleteKey()
-        print("PrivacyManager: Encryption key deletion requested. Success: \(deleted)")
+        Log.security.notice("PrivacyManager: encryption key deletion requested (success: \(deleted, privacy: .public))")
     }
 
     // MARK: - App Lock + Encryption Integration (session-level unlock)
@@ -217,8 +215,8 @@ final class PrivacyManager {
         if dataEncryptionEnabled, KeychainManager.keyExists() {
             _ = KeychainManager.loadKey()
             if DeveloperSettings.shared.verboseSecurityLogging {
-            print("PrivacyManager: Encryption key pre-loaded after App Lock authentication (session authenticated).")
-        }
+                Log.security.info("PrivacyManager: encryption key pre-loaded after App Lock authentication")
+            }
         }
     }
 
@@ -269,7 +267,7 @@ final class PrivacyManager {
         }
 
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("PrivacyManager: Secure Mac preset applied (history off: \(result.historyDisabled), encryption: \(result.encryptionEnabled), app lock: \(result.appLockEnabled), recovery: \(result.recoveryCode != nil))")
+            Log.privacy.info("PrivacyManager: Secure Mac preset applied (history off: \(result.historyDisabled, privacy: .public), encryption: \(result.encryptionEnabled, privacy: .public), app lock: \(result.appLockEnabled, privacy: .public), recovery: \(result.recoveryCode != nil, privacy: .public))")
         }
 
         return result
@@ -310,7 +308,7 @@ final class PrivacyManager {
         NotificationCenter.default.post(name: Notification.Name("Searxly.LocalAIClearRequested"), object: nil)
 
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("PrivacyManager: Strict/Maximum Privacy mode enabled (private tabs default + history off + Local AI disabled)")
+            Log.privacy.info("PrivacyManager: Strict/Maximum Privacy mode enabled (private tabs default + history off + Local AI disabled)")
         }
     }
 
@@ -383,7 +381,7 @@ final class PrivacyManager {
             try content.write(to: url, atomically: true, encoding: .utf8)
             return url
         } catch {
-            print("PrivacyManager: Failed to save recovery code file: \(error)")
+            Log.privacy.error("PrivacyManager: failed to save recovery code file: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -426,7 +424,7 @@ final class PrivacyManager {
             if stopDockerContainer {
                 Task { @MainActor in
                     await LocalSearxngManager.shared.stop()
-                    print("PrivacyManager: Panic wipe also stopped the local SearXNG container.")
+                    Log.privacy.notice("PrivacyManager: panic wipe also stopped the local SearXNG container")
                     // New in Phase 0: also nuke any in-memory AI state (synthesis, rewrite badge, open chat sheet, etc.)
                     // The manager itself will unload models when the master toggle is forced off by UI or other paths.
                     // We call through BrowserState if a reference is available; otherwise the next load will see clean state.
@@ -443,7 +441,7 @@ final class PrivacyManager {
 
         // Post a special notification so the UI can show a dramatic "Everything cleared" banner if desired
         NotificationCenter.default.post(name: Notification.Name("Searxly.PanicWipeCompleted"), object: nil)
-        print("PrivacyManager: *** PANIC WIPE COMPLETED ***")
+        Log.privacy.notice("PrivacyManager: *** PANIC WIPE COMPLETED ***")
     }
 
     // MARK: - Clear Operations
@@ -467,7 +465,8 @@ final class PrivacyManager {
         // P5: if RAG was using history, drop the in-memory index so the next retrieve/chat can't
         // surface items the user just asked to forget. Rebuild will happen on next use if RAG still enabled.
         LocalIntelligenceManager.shared.clearRAGIndex()
-        print("PrivacyManager: History cleared (since: \(since?.description ?? "all time"))")
+        // The exact cutoff date is user data — leave it redacted in release.
+        Log.privacy.info("PrivacyManager: history cleared (since: \(since?.description ?? "all time"))")
     }
 
     /// Clears persisted bookmarks.
@@ -502,7 +501,7 @@ final class PrivacyManager {
 
         let cutoff = since ?? .distantPast
         store.removeData(ofTypes: dataTypes, modifiedSince: cutoff) {
-            print("PrivacyManager: Standard tab website data cleared (since: \(since?.description ?? "all time")).")
+            Log.privacy.info("PrivacyManager: standard tab website data cleared (since: \(since?.description ?? "all time"))")
             NotificationCenter.default.post(name: Self.standardWebDataClearedNotification, object: nil)
             completion?()
         }
@@ -535,7 +534,8 @@ final class PrivacyManager {
 
         // 3. Clear standard web data (best effort for the domain)
         clearStandardWebData {
-            print("PrivacyManager: Forget domain completed for \(normalizedHost)")
+            // The forgotten host is user browsing data — redacted in release.
+            Log.privacy.info("PrivacyManager: forget-domain completed for \(normalizedHost)")
             NotificationCenter.default.post(name: Self.standardWebDataClearedNotification, object: nil)
             completion?()
         }

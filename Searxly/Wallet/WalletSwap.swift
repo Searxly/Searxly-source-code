@@ -55,11 +55,15 @@ enum WalletSwap {
     static func quote(sell: WalletToken, buy: WalletToken, sellAmount: Decimal, taker: String,
                       chainId: Int = WalletConfig.baseChainID) async -> Result<SwapQuote, SwapError> {
         guard WalletFeatures.swaps else { return .failure(.notConfigured) }
-        let key = WalletFeatures.zeroExAPIKey
-        guard !key.isEmpty else { return .failure(.noKey) }
+        // Prefer the user's own 0x key (talks to 0x directly). Otherwise route through the Searxly
+        // gateway, which holds the key server-side — so swaps work with no per-user key.
+        let userKey = WalletFeatures.zeroExAPIKey
+        let useGateway = userKey.isEmpty
+        guard !useGateway || SearxlyGateway.isConfigured else { return .failure(.noKey) }
+        let base = useGateway ? SearxlyGateway.zeroExBase : WalletConfig.swapAPIBase
 
         let sellAmountBase = WeiConverter.baseUnitDecimalString(amount: sellAmount, decimals: sell.decimals)
-        var comps = URLComponents(string: "\(WalletConfig.swapAPIBase)/swap/allowance-holder/quote")
+        var comps = URLComponents(string: "\(base)/swap/allowance-holder/quote")
         comps?.queryItems = [
             .init(name: "chainId", value: String(chainId)),
             .init(name: "sellToken", value: token0xAddress(sell)),
@@ -70,8 +74,13 @@ enum WalletSwap {
         guard let url = comps?.url else { return .failure(.badResponse("Bad URL")) }
 
         var req = URLRequest(url: url)
-        req.setValue(key, forHTTPHeaderField: "0x-api-key")
-        req.setValue("v2", forHTTPHeaderField: "0x-version")
+        if useGateway {
+            // The gateway attaches the real 0x-api-key + 0x-version itself.
+            req.setValue(SearxlyGateway.bearer, forHTTPHeaderField: "Authorization")
+        } else {
+            req.setValue(userKey, forHTTPHeaderField: "0x-api-key")
+            req.setValue("v2", forHTTPHeaderField: "0x-version")
+        }
         req.timeoutInterval = 20
 
         guard let (data, _) = try? await URLSession.shared.data(for: req),

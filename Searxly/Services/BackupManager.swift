@@ -69,6 +69,12 @@ enum BackupManager {
     /// - Returns: Whether the encryption key was also restored.
     @discardableResult
     static func restore(from source: URL, password: String) throws -> Bool {
+        // A backup file picked via NSOpenPanel may be a security-scoped URL when sandboxed; without
+        // this, the read can fail. Harmless (returns false) when the app isn't sandboxed.
+        let scoped = source.startAccessingSecurityScopedResource()
+        defer { if scoped { source.stopAccessingSecurityScopedResource() } }
+
+        guard !password.isEmpty else { throw BackupError.invalidPassword }
         let payload = try Data(contentsOf: source)
 
         let backup = try EncryptedBackup.decrypted(from: payload, using: password)
@@ -132,14 +138,18 @@ enum BackupManager {
         }
 
         static func decrypted(from payload: Data, using password: String) throws -> EncryptedBackup {
-            guard payload.count > 22,
-                  payload.prefix(4) == Data("SBKP".utf8),
-                  payload[4] == 1 else {
+            // Normalize to a zero-based contiguous buffer so byte indexing/slicing is correct
+            // regardless of the source Data's startIndex (slices and mmapped Data don't start at 0).
+            let bytes = Data(payload)
+            guard bytes.count > 22,
+                  bytes.prefix(4) == Data("SBKP".utf8),
+                  bytes[4] == 1 else {
                 throw BackupError.corruptedBackup
             }
 
-            let salt = payload[5..<21]
-            let ciphertext = payload[21...]
+            // Copy out of the slices so downstream APIs never see a non-zero startIndex.
+            let salt = Data(bytes[5..<21])
+            let ciphertext = Data(bytes[21...])
 
             let key = try Self.deriveKey(from: password, salt: salt)
 
@@ -168,21 +178,29 @@ enum BackupManager {
     }
 }
 
-// Minimal PBKDF2 implementation using CommonCrypto (via Security framework on Apple platforms)
+// Minimal PBKDF2 implementation using CommonCrypto (via Security framework on Apple platforms).
+//
+// NOTE: an empty `Data`'s `withUnsafeBytes` buffer has a nil `baseAddress`, so the previous
+// `baseAddress!` force-unwraps would TRAP (EXC_BREAKPOINT) on an empty password or salt instead of
+// failing gracefully. We validate inputs up front and pass the (possibly nil) base addresses without
+// force-unwrapping — `CCKeyDerivationPBKDF` takes implicitly-unwrapped optional pointers.
 private func PBKDF2(password: Data, salt: Data, iterations: Int, keyLength: Int) throws -> Data {
+    guard !password.isEmpty, !salt.isEmpty, keyLength > 0 else {
+        throw BackupManager.BackupError.invalidPassword
+    }
     var derivedKey = Data(count: keyLength)
-    let result = derivedKey.withUnsafeMutableBytes { derivedBytes in
-        password.withUnsafeBytes { passwordBytes in
-            salt.withUnsafeBytes { saltBytes in
+    let result = derivedKey.withUnsafeMutableBytes { (derivedBytes: UnsafeMutableRawBufferPointer) -> Int32 in
+        salt.withUnsafeBytes { (saltBytes: UnsafeRawBufferPointer) -> Int32 in
+            password.withUnsafeBytes { (passwordBytes: UnsafeRawBufferPointer) -> Int32 in
                 CCKeyDerivationPBKDF(
                     CCPBKDFAlgorithm(kCCPBKDF2),
-                    passwordBytes.baseAddress!.assumingMemoryBound(to: Int8.self),
+                    passwordBytes.bindMemory(to: Int8.self).baseAddress,
                     password.count,
-                    saltBytes.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    saltBytes.bindMemory(to: UInt8.self).baseAddress,
                     salt.count,
                     CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
                     UInt32(iterations),
-                    derivedBytes.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    derivedBytes.bindMemory(to: UInt8.self).baseAddress,
                     keyLength
                 )
             }

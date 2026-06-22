@@ -28,6 +28,10 @@ struct LocalAIChatSheet: View {
     var performPrivateSearch: ((String) async -> [SearXNGResult])? = nil
     var openWebsite: ((String) -> Void)? = nil
 
+    /// Opens an exact URL in a new tab — used by citation source chips (cloud grounded answers).
+    /// Unlike `openWebsite` (which resolves a fuzzy description), this loads the precise source URL.
+    var openURLInTab: ((String) -> Void)? = nil
+
     /// The last search query the user ran, passed in by the parent view from BrowserState.lastSearchQuery.
     /// Using an in-memory property avoids writing sensitive search queries to unencrypted UserDefaults.
     var lastSearchQuery: String = ""
@@ -38,6 +42,10 @@ struct LocalAIChatSheet: View {
     /// The previous blocking semaphore version was causing actor/task violations ("task XXX" errors at sema.wait())
     /// and could starve the main thread / WebContent processes.
     var retrieveRAG: ((String) async -> [RAGItem])? = nil
+
+    /// A pending "Ask Searxly AI" seed from the page right-click menu (selection → chat).
+    /// Consumed (and cleared) on appear, or live via onChange when the chat is already open.
+    var seed: Binding<AIChatSeed?> = .constant(nil)
 
     @State var messages: [ChatMessage] = []
     @State var inputText: String = ""
@@ -278,6 +286,10 @@ struct LocalAIChatSheet: View {
         // Size is dictated by the fixed-size floating panel host in ContentView (no more min here;
         // the outer frame is chosen large enough to avoid all internal layout breaks/crowding).
         .onAppear(perform: seedIfNeeded)
+        .onChange(of: seed.wrappedValue) { _, newValue in
+            // Selection asked while the chat is already open.
+            if newValue != nil { consumePendingSeed() }
+        }
         .onDisappear {
             if !manager.preferences.lowMemoryMode {
                 LocalIntelligenceManager.shared.considerIdleUnload()

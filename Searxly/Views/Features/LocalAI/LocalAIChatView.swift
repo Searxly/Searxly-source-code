@@ -13,6 +13,7 @@
 //  ContentView now just references this view for the overlay/sheet content.
 
 import SwiftUI
+import os
 
 struct LocalAIChatView: View {
     // BrowserState is @Observable (class). Use @Bindable so we can derive bindings to its
@@ -32,7 +33,7 @@ struct LocalAIChatView: View {
                     )
                     return r
                 } catch {
-                    print("Private search tool failed: \(error)")
+                    Log.app.error("Private search tool failed: \(error)")
                     return []
                 }
             },
@@ -45,11 +46,19 @@ struct LocalAIChatView: View {
                 browserState.showingWebContent = true
                 browserState.openWebsite(description: description)
             },
+            // Citation source chips open the exact source URL in a new tab.
+            openURLInTab: { url in
+                browserState.clearNativeSearch()
+                browserState.showingWebContent = true
+                browserState.openResultsInTabs(urls: [url])
+            },
             lastSearchQuery: browserState.lastSearchQuery,
             // RAG — live data from BrowserState
             retrieveRAG: { query in
                 await LocalIntelligenceManager.shared.retrieveRAGIfEnabled(query: query)
-            }
+            },
+            // "Ask Searxly AI" selection seed from the page right-click menu.
+            seed: $browserState.pendingAIChatSeed
         )
     }
 }

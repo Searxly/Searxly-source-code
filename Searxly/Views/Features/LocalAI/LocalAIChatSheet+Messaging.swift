@@ -106,6 +106,55 @@ extension LocalAIChatSheet {
             // Make sure the newly created empty conversation (if any) is up to date in the list.
             syncCurrentConversation(backendDesc: backendDesc)
         }
+
+        // If we were opened (or are open) with an "Ask Searxly AI" selection, act on it now.
+        consumePendingSeed()
+    }
+
+    /// Handles a pending "Ask Searxly AI" seed. Three cases:
+    /// - Handoff from the quick-answer popup (priorAnswer set): inject the Q&A so the chat continues.
+    /// - Ask: pre-fill the composer so the user can frame a question.
+    /// - Explain/Summarize (only if seeded directly): auto-send.
+    /// Clears the seed so it's consumed exactly once.
+    func consumePendingSeed() {
+        guard let s = seed.wrappedValue else { return }
+        seed.wrappedValue = nil
+
+        let selection = s.selection.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !selection.isEmpty else { return }
+
+        // Quick-answer handoff: show the prior exchange, then let the user continue.
+        if let answer = s.priorAnswer, !answer.isEmpty {
+            messages.append(ChatMessage(role: .user, text: questionText(for: s.action, selection: selection)))
+            messages.append(ChatMessage(role: .assistant, text: answer))
+            currentFollowUpSuggestions = []
+            syncCurrentConversation()
+            return
+        }
+
+        switch s.action {
+        case .ask:
+            // Pre-fill the composer with the quoted selection; let the user type their question.
+            inputText = "Regarding this text:\n\n\"\(selection)\"\n\n"
+        case .explain, .summarize:
+            inputText = questionText(for: s.action, selection: selection)
+            send()
+        case .summarizePage:
+            // Only reached via handoff (handled above). Defensive: just pre-fill, never auto-send
+            // (we don't have the page body here — and must never re-introduce untrusted page text).
+            inputText = "About this page (\(selection)): "
+        }
+    }
+
+    /// The user-facing question text used for a selection action (also the transcript line on handoff).
+    /// For a page summary, `selection` is the page TITLE only — never the raw page body.
+    func questionText(for action: AIChatSeed.Action, selection: String) -> String {
+        switch action {
+        case .summarize:     return "Summarize this:\n\n\"\(selection)\""
+        case .explain:       return "Explain this clearly and concisely:\n\n\"\(selection)\""
+        case .ask:           return "Regarding this text:\n\n\"\(selection)\""
+        case .summarizePage: return "Summarize this page: \(selection)"
+        }
     }
 
     /// Decides whether to spend time on RAG retrieval for this query.
@@ -113,9 +162,14 @@ extension LocalAIChatSheet {
     /// For Ollama we are lazy: only retrieve if the query looks like it needs the user's personal history/bookmarks
     /// (e.g. "what did I read about X", "my bookmark", "have I visited"). General knowledge questions ("who is Elon Musk")
     /// skip RAG entirely for Ollama — the stronger model can answer from knowledge + web_search tool when appropriate.
-    func shouldRetrieveRAG(for query: String, isOllama: Bool) -> Bool {
+    func shouldRetrieveRAG(for query: String, isOllama: Bool, isCloud: Bool = false) -> Bool {
         guard retrieveRAG != nil else { return false }
-        if !isOllama { return true } // keep previous aggressive behavior for the tiny on-device model
+        // Aggressive RAG ONLY for the on-device Apple model: it's free and nothing leaves the Mac.
+        // For any backend that sends prompts off-device — the experimental remote Ollama AND the
+        // Searxly AI cloud — gate RAG behind the personal-intent heuristic below, so private
+        // bookmarks/history/notes never leave the device for general-knowledge questions
+        // (e.g. "who is elon musk" must NOT ship your browsing history to the cloud).
+        if !isOllama && !isCloud { return true }
 
         let lower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if lower.isEmpty { return false }
@@ -378,7 +432,8 @@ extension LocalAIChatSheet {
         let _canUseTools = (performPrivateSearch != nil || openWebsite != nil) && manager.canUseFeatures
         let _useTools = manager.toolsEnabled && _canUseTools
         let isOllamaForLog = manager.preferences.experimentalFallbacksEnabled && manager.preferences.useOllama
-        let ragAttempted = retrieveRAG != nil && (!isOllamaForLog || shouldRetrieveRAG(for: text, isOllama: isOllamaForLog))
+        let isCloudForLog = manager.preferences.searxlyAIEnabled && manager.preferences.useSearxlyAI
+        let ragAttempted = shouldRetrieveRAG(for: text, isOllama: isOllamaForLog, isCloud: isCloudForLog)
         LocalIntelligenceManager.shared.logAction(.chatTurn, summary: "Chat send started (len=\(text.count))", detail: "useToolsInPrompt=\(_useTools), toolsEnabled=\(manager.toolsEnabled), attachedFiles=\(attachedFiles.count), rag=\(ragAttempted)", usedModel: true)
 
         // Reliable direct bypass for explicit navigation ("open ...", "go to ...").
@@ -452,7 +507,7 @@ extension LocalAIChatSheet {
             // query + scoring against history/bookmarks for general-knowledge questions (the original source
             // of the "IP address history leaking into 'who is elon musk'" bug). Apple path remains eager.
             var ragItems: [RAGItem] = []
-            if shouldRetrieveRAG(for: text, isOllama: isOllama) {
+            if shouldRetrieveRAG(for: text, isOllama: isOllama, isCloud: isCloud) {
                 if let retriever = retrieveRAG, !text.isEmpty {
                     ragItems = await retriever(text)
                 }
@@ -541,6 +596,16 @@ extension LocalAIChatSheet {
                 let prefix = String(effectivePrompt[..<insertionPoint])
                 let suffix = String(effectivePrompt[insertionPoint...])
                 effectivePrompt = prefix + "\n\n" + turnCtx.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n" + suffix
+            }
+
+            if useToolsInPrompt && isCloud {
+                // Cloud agentic path: real OpenAI-style tool calling on the 70B (web_search /
+                // open_website), returning a grounded answer + clickable source citations.
+                // Kept separate from the Apple FoundationModels path (which uses @Generable tools).
+                await runCloudAgenticTurn(effectivePrompt: effectivePrompt,
+                                          systemPrompt: systemPrompt,
+                                          thinkingId: thinkingId)
+                return
             }
 
             if useToolsInPrompt {
@@ -852,10 +917,11 @@ extension LocalAIChatSheet {
         let ollamaName: String? = isOllama ? manager.preferences.ollamaModelName : nil
         let isCloud = manager.preferences.searxlyAIEnabled && manager.preferences.useSearxlyAI
 
-        // Same lazy RAG logic as the main send path (Ollama only retrieves on personal/memory-style follow-ups).
+        // Same lazy RAG logic as the main send path: off-device backends (remote Ollama AND the Searxly AI
+        // cloud) only retrieve on personal/memory-style follow-ups, so private data isn't shipped off-device.
         var ragItems: [RAGItem] = []
         if let lastUser = messages.last(where: { $0.role == .user })?.text, !lastUser.isEmpty {
-            if shouldRetrieveRAG(for: lastUser, isOllama: isOllama) {
+            if shouldRetrieveRAG(for: lastUser, isOllama: isOllama, isCloud: isCloud) {
                 if let retriever = retrieveRAG {
                     ragItems = await retriever(lastUser)
                 }

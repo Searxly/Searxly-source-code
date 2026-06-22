@@ -51,8 +51,13 @@ final class WalletProviderBridge {
     private func emit(_ event: String, _ payload: Any) {
         let json = (try? JSONSerialization.data(withJSONObject: payload))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "null"
-        let escaped = json.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
-        let js = "window.__searxlyWalletEmit && window.__searxlyWalletEmit('\(event)', '\(escaped)')"
+        // Pass the JSON payload as a base64 blob decoded by atob() instead of hand-escaping it into a
+        // JS string literal. base64 is [A-Za-z0-9+/=] only, so there is nothing to break out of the
+        // single-quoted argument — no JS-injection risk even if a payload ever carried quotes,
+        // backslashes, or line/paragraph separators. (`event` is always an app-controlled constant,
+        // and the emitted payloads are ASCII, so atob's byte-for-byte decode round-trips the JSON.)
+        let b64 = Data(json.utf8).base64EncodedString()
+        let js = "window.__searxlyWalletEmit && window.__searxlyWalletEmit('\(event)', atob('\(b64)'))"
         for wv in webViews.allObjects { wv.evaluateJavaScript(js, completionHandler: nil) }
     }
 
@@ -178,8 +183,12 @@ final class WalletProviderBridge {
     private func signTyped(params: [Any], origin: String) async -> [String: Any] {
         guard perm.isConnected(origin) else { return err(4100, "Connect the wallet first") }
         guard let json = typedDataParam(params) else { return err(-32602, "Invalid typed data") }
-        let summary = typedDataSummary(json)
-        guard let pin = await present(.signTypedData(summary: summary), origin: origin) else {
+        // Decode the structured data so the user sees the ACTUAL fields (spender / amount / deadline)
+        // they're signing — not just a type name. This is the core defense against Permit-style
+        // signature drains, where the dangerous detail is hidden inside the message.
+        let preview = TypedDataPreview(json: json, ownAddress: address(for: origin),
+                                       activeChain: WalletManager.shared.activeChain)
+        guard let pin = await present(.signTypedData(preview), origin: origin) else {
             return err(4001, "User rejected the request")
         }
         guard let sig = WalletManager.shared.dappSignTypedData(json: json, pin: pin,
@@ -299,13 +308,6 @@ final class WalletProviderBridge {
         return String(data: data, encoding: .utf8) ?? message
     }
 
-    private func typedDataSummary(_ json: String) -> String {
-        guard let d = json.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return "Typed data" }
-        let primary = (obj["primaryType"] as? String) ?? "message"
-        let domainName = (obj["domain"] as? [String: Any])?["name"] as? String
-        return domainName.map { "\($0) · \(primary)" } ?? primary
-    }
 }
 
 // MARK: - Approval model
@@ -315,7 +317,7 @@ final class DAppApproval: Identifiable {
     enum Kind {
         case connect
         case signMessage(text: String)
-        case signTypedData(summary: String)
+        case signTypedData(TypedDataPreview)
         case transaction(TxPreview)
         case switchChain(chainName: String)
     }
@@ -339,45 +341,5 @@ final class DAppApproval: Identifiable {
         guard !done else { return }
         done = true
         WalletProviderBridge.shared.resolveApproval(self, pin: pin)
-    }
-}
-
-/// Human-readable preview of a dApp `eth_sendTransaction`.
-struct TxPreview {
-    let to: String
-    let valueHex: String?
-    let dataHex: String?
-
-    var valueEth: String {
-        let bytes = Array(RLP.dataFromHex(valueHex ?? "0x0"))
-        var v = 0.0
-        for b in bytes { v = v * 256 + Double(b) }
-        let eth = v / 1e18
-        if eth == 0 { return "0" }
-        if eth < 0.0001 { return String(format: "%.8f", eth) }
-        return String(format: "%.6f", eth)
-    }
-
-    /// Decodes common ERC-20 calldata into plain language. nil for unknown/empty data.
-    var decoded: String? {
-        guard let dataHex, dataHex.count >= 10 else { return nil }
-        let selector = String(dataHex.dropFirst(2).prefix(8)).lowercased()
-        switch selector {
-        case "a9059cbb": return "Token transfer"
-        case "095ea7b3": return isUnlimitedApproval ? "Unlimited token approval" : "Token approval"
-        default:         return "Contract interaction"
-        }
-    }
-
-    var isApproval: Bool {
-        guard let dataHex, dataHex.count >= 10 else { return false }
-        return String(dataHex.dropFirst(2).prefix(8)).lowercased() == "095ea7b3"
-    }
-
-    var isUnlimitedApproval: Bool {
-        guard isApproval, let dataHex else { return false }
-        // approve(spender, amount): amount is the last 32-byte word; all-f = unlimited.
-        let amount = String(dataHex.suffix(64)).lowercased()
-        return amount == String(repeating: "f", count: 64)
     }
 }

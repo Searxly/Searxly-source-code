@@ -6,6 +6,7 @@
 //
 
 import WebKit
+import os
 
 extension WebViewRepresentable.Coordinator {
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -22,7 +23,7 @@ extension WebViewRepresentable.Coordinator {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         DispatchQueue.main.async { self.parent.isLoading = false }
         if DeveloperSettings.shared.isEnabled {
-            print("[AdBlock] Page finished loading: \(webView.url?.absoluteString ?? "unknown")")
+            Log.web.info("[AdBlock] Page finished loading: \(webView.url?.absoluteString ?? "unknown")")
         }
 
         DispatchQueue.main.async {
@@ -220,7 +221,7 @@ extension WebViewRepresentable.Coordinator {
                     })();
                     """, completionHandler: { res, _ in
                         if DeveloperSettings.shared.isEnabled || DeveloperSettings.shared.verboseTabLifecycleLogging {
-                            print("[YT Quality] video natural sizes after settle:", res ?? "n/a")
+                            Log.web.debug("[YT Quality] video natural sizes after settle: \(String(describing: res ?? "n/a"), privacy: .public)")
                         }
                     })
                 }
@@ -240,7 +241,7 @@ extension WebViewRepresentable.Coordinator {
         DispatchQueue.main.async {
             self.parent.isLoading = false
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseTabLifecycleLogging {
-                print("[Dev] WebView error: \(error.localizedDescription)")
+                Log.web.error("[Dev] WebView error: \(error.localizedDescription)")
             }
         }
     }
@@ -249,7 +250,7 @@ extension WebViewRepresentable.Coordinator {
         DispatchQueue.main.async {
             self.parent.isLoading = false
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseTabLifecycleLogging {
-                print("[Dev] WebView provisional navigation failed: \(error.localizedDescription) for \(webView.url?.absoluteString ?? "unknown")")
+                Log.web.error("[Dev] WebView provisional navigation failed: \(error.localizedDescription) for \(webView.url?.absoluteString ?? "unknown")")
             }
             self.observedContainer?.stabilizeLayout(repeats: 1)
         }
@@ -258,14 +259,17 @@ extension WebViewRepresentable.Coordinator {
     func webView(_ webView: WKWebView,
                  didReceive challenge: URLAuthenticationChallenge,
                  completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        // Only bypass certificate validation for unambiguous loopback / mDNS addresses.
-        // Removed the previous `host.contains("searx")` check: any attacker-controlled domain
-        // containing "searx" (e.g. searx-evil.com) would have received unconditional trust.
+        // Only bypass certificate validation for unambiguous LOOPBACK addresses, which a network
+        // attacker cannot intercept. The bundled local SearXNG runs over HTTP on 127.0.0.1, so this
+        // only matters for a user-run HTTPS service on loopback with a self-signed cert.
+        //
+        // We deliberately do NOT bypass for ".local" (mDNS) anymore: any host on the LAN can claim a
+        // ".local" name, so trusting those unconditionally was a LAN-MITM hole. (Earlier still, a
+        // `host.contains("searx")` check trusted any attacker domain containing "searx".)
         if let serverTrust = challenge.protectionSpace.serverTrust {
             let host = challenge.protectionSpace.host.lowercased()
             let isLoopback = host == "localhost" || host == "127.0.0.1" || host == "::1"
-            let isMDNS = host.hasSuffix(".local")
-            if isLoopback || isMDNS {
+            if isLoopback {
                 let credential = URLCredential(trust: serverTrust)
                 completionHandler(.useCredential, credential)
                 return

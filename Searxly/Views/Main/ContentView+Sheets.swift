@@ -56,6 +56,18 @@ extension ContentView {
                             browserState.showingReaderSheet = false
                             browserState.isReaderMode = false
                             browserState.openLocalAIChat()
+                        },
+                        onTalkToSearxly: { summary, title in
+                            // Continue the reader summary in the full chat. Only the model's summary +
+                            // the page title cross over — never the raw (untrusted) page text.
+                            browserState.showingReaderSheet = false
+                            browserState.isReaderMode = false
+                            browserState.pendingAIChatSeed = AIChatSeed(
+                                selection: title.isEmpty ? "this page" : title,
+                                action: .summarizePage,
+                                priorAnswer: summary
+                            )
+                            browserState.openLocalAIChat()
                         }
                     )
                 }

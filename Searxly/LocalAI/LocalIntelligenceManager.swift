@@ -23,6 +23,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 import Observation
 import AppKit   // for NSPasteboard in diagnostics export
@@ -86,6 +87,36 @@ final class LocalIntelligenceManager {
             ensureProvider()
         }
         return currentProvider!
+    }
+
+    /// Cached on-device provider borrowed for cheap auxiliary jobs (see `auxiliaryProvider()`).
+    /// Kept separate from `currentProvider` so it survives chat-backend switches.
+    private var auxAppleProvider: AppleIntelligenceProvider?
+
+    /// True only when the on-device Apple model genuinely probed as available.
+    /// `availability` retains the real Apple probe result even when the cloud / Ollama gate
+    /// forces `status = .ready`, so this is a reliable signal (unlike `status`).
+    private var appleModelAvailable: Bool {
+        if case .available = availability { return true }
+        return false
+    }
+
+    /// Provider to use for cheap auxiliary jobs (query rewrite, follow-up suggestions, conversation
+    /// titles). These never need the paid cloud 70B — running them on-device is faster, cheaper, and
+    /// more private. Returns nil to signal "skip this optional job" when the chat is on the cloud and
+    /// there's no free on-device model to borrow, so callers no-op instead of spending cloud tokens.
+    func auxiliaryProvider() -> IntelligenceProvider? {
+        // Apple or local Ollama: the active provider is already free/local — just use it.
+        if !(currentIntelligenceProvider is CloudIntelligenceProvider) {
+            return currentIntelligenceProvider
+        }
+        // Active chat is the paid cloud. Borrow the on-device Apple model if it's truly available.
+        if appleModelAvailable {
+            if auxAppleProvider == nil { auxAppleProvider = AppleIntelligenceProvider() }
+            return auxAppleProvider
+        }
+        // No free model to borrow → don't bill the cloud for a nice-to-have.
+        return nil
     }
 
     // RAG (Phase 4 + Core AI semantic upgrade + reranker High #2)
@@ -166,7 +197,7 @@ final class LocalIntelligenceManager {
         availability = avail
 
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-            print("[LocalAI] Availability probe result: \(avail)")
+            Log.ai.info("[LocalAI] availability probe result: \(String(describing: avail), privacy: .public)")
         }
 
         switch avail {
@@ -220,7 +251,9 @@ final class LocalIntelligenceManager {
         defer { isGenerating = false }
 
         ensureProvider()
-        guard let provider = currentProvider else { return original }
+        // Query rewrite is a cheap throwaway job — never bill the cloud 70B for it. Borrow the
+        // on-device model when the chat is on cloud; skip entirely if no free model is available.
+        guard let provider = auxiliaryProvider() else { return original }
 
         let improved = await QueryRewriter.rewrite(original, using: provider)
 
@@ -367,7 +400,7 @@ final class LocalIntelligenceManager {
         if recentActions.count > 100 { recentActions.removeLast() }
 
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-            print("[LocalAI] \(type.rawValue): \(summary)")
+            Log.ai.info("[LocalAI] \(type.rawValue): \(summary)")
         }
     }
 
@@ -389,7 +422,7 @@ final class LocalIntelligenceManager {
             logAction(.synthesis, summary: "One-shot generation for built-in feature", detail: prompt.prefix(50) + "...", usedModel: true)
             return result.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
-            print("[LocalAI] one-shot generate failed: \(error)")
+            Log.ai.error("[LocalAI] one-shot generate failed: \(error)")
             return nil
         }
     }
@@ -524,7 +557,7 @@ final class LocalIntelligenceManager {
             // Touching the getter forces ensureProvider() which now does the full wantsOllama vs current-type check.
             _ = self.currentIntelligenceProvider
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] reselectProvider() completed — active provider is now \(self.currentIntelligenceProvider.capabilities.name)")
+                Log.ai.info("[LocalAI] reselectProvider() completed — active provider is now \(self.currentIntelligenceProvider.capabilities.name)")
             }
         }
     }
@@ -541,7 +574,7 @@ final class LocalIntelligenceManager {
                 ollama.baseURL = u
             }
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] applyLiveOllamaConfig() — live Ollama now model='\(ollama.modelName)' url=\(ollama.baseURL)")
+                Log.ai.info("[LocalAI] applyLiveOllamaConfig() — live Ollama now model='\(ollama.modelName)' url=\(ollama.baseURL)")
             }
         }
     }
@@ -556,7 +589,7 @@ final class LocalIntelligenceManager {
             }
             cloud.apiKey = preferences.searxlyAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] applyLiveSearxlyAIConfig() — live Searxly AI now model='\(cloud.modelName)' url=\(cloud.baseURL)")
+                Log.ai.info("[LocalAI] applyLiveSearxlyAIConfig() — live Searxly AI now model='\(cloud.modelName)' url=\(cloud.baseURL)")
             }
         }
     }
@@ -811,7 +844,7 @@ final class LocalIntelligenceManager {
 
         // Also append a console note if verbose
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-            print("[LocalAI] Full diagnostics report copied to pasteboard.")
+            Log.ai.info("[LocalAI] Full diagnostics report copied to pasteboard.")
         }
     }
 }
@@ -887,7 +920,7 @@ extension LocalIntelligenceManager {
                 instructions: "Respond with a single short friendly word."
             )
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] Warm-up generation completed (background)")
+                Log.ai.info("[LocalAI] Warm-up generation completed (background)")
             }
         }
     }

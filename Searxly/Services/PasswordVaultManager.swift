@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os
 import LocalAuthentication
 import Security
 
@@ -146,9 +147,7 @@ final class PasswordVaultManager {
             var evalError: NSError?
             guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &evalError) else {
                 activeVaultAuthContext = nil
-                #if DEBUG
-                print("[Passwords] Biometric auth unavailable: \(evalError?.localizedDescription ?? "unknown")")
-                #endif
+                Log.security.error("Passwords: biometric auth unavailable: \(evalError?.localizedDescription ?? "unknown", privacy: .public)")
                 continuation.resume(returning: false)
                 return
             }
@@ -299,9 +298,7 @@ final class PasswordVaultManager {
         entries = []
         persistEntries()
         lockVault()
-        #if DEBUG
-        print("[Passwords] Cleared vault metadata and Keychain secrets.")
-        #endif
+        Log.security.notice("Passwords: cleared vault metadata and Keychain secrets")
     }
 
     func suggestPasswordWithAI(for domain: String) async -> String {
@@ -398,9 +395,7 @@ final class VaultLockManager {
         Persistence.savePasswordVaultLockConfig(useCustom: false, salt: nil, verifier: nil)
         useCustomPassphrase = false
         PasswordVaultManager.shared.lockVault()
-        #if DEBUG
-        print("[Passwords] Cleared vault lock configuration.")
-        #endif
+        Log.security.notice("Passwords: cleared vault lock configuration")
     }
 }
 

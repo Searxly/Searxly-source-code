@@ -132,14 +132,60 @@ extension LocalAIChatSheet {
                 SearxlyChatMark(color: WalletTheme.textSecondary, lineWidth: 1.4)
                     .frame(width: 22, height: 22)
                     .padding(.top, 2)
-                Text(msg.text)
-                    .textSelection(.enabled)
-                    .font(.callout)
-                    .foregroundStyle(WalletTheme.textPrimary.opacity(0.92))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(msg.text)
+                        .textSelection(.enabled)
+                        .font(.callout)
+                        .foregroundStyle(WalletTheme.textPrimary.opacity(0.92))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let sources = msg.sources, !sources.isEmpty {
+                        sourcesFooter(sources)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+
+    /// Clickable citation chips under a grounded (cloud) answer. Tapping opens the exact source URL
+    /// in a new Searxly tab. Monochrome to match the chat (brand: black & white).
+    @ViewBuilder
+    func sourcesFooter(_ sources: [Citation]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Sources")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(WalletTheme.textSecondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(sources) { citation in
+                        Button {
+                            openURLInTab?(citation.url)
+                        } label: {
+                            HStack(spacing: 5) {
+                                Text("[\(citation.id)]")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(WalletTheme.textPrimary)
+                                Text(citation.domain)
+                                    .font(.caption2)
+                                    .foregroundStyle(WalletTheme.textSecondary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(WalletTheme.surfaceField))
+                            .overlay(Capsule().strokeBorder(WalletTheme.hairline, lineWidth: 0.7))
+                        }
+                        .buttonStyle(.plain)
+                        .help(citation.title)
+                    }
+                }
+                .padding(.vertical, 1)
+            }
+        }
+        .padding(.top, 2)
     }
 
     @ViewBuilder

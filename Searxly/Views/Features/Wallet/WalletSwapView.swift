@@ -89,15 +89,21 @@ struct WalletSwapView: View {
         }
     }
 
-    private var swapsReady: Bool { WalletFeatures.swaps && !WalletFeatures.zeroExAPIKey.isEmpty }
+    private var swapsReady: Bool {
+        // The gateway supplies the 0x key server-side, so a user key is no longer required —
+        // only the Swaps toggle needs to be on (off by default for privacy).
+        WalletFeatures.swaps && (!WalletFeatures.zeroExAPIKey.isEmpty || SearxlyGateway.isConfigured)
+    }
 
     /// Shown when swaps aren't set up yet, so the screen isn't a dead end.
     private var swapSetupBanner: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "key.horizontal").font(.system(size: 14)).foregroundStyle(WalletTheme.warning)
             VStack(alignment: .leading, spacing: 3) {
-                Text("One-time setup for swaps").font(.system(size: 12, weight: .semibold)).foregroundStyle(WalletTheme.textPrimary)
-                Text("Swaps use the 0x aggregator and need a free API key. Open Settings → Wallet → Wallet Features, turn on **Swaps**, and paste a 0x key. Adding the key turns swaps on automatically.")
+                Text("Turn on swaps").font(.system(size: 12, weight: .semibold)).foregroundStyle(WalletTheme.textPrimary)
+                Text(SearxlyGateway.isConfigured
+                     ? "Open Settings → Wallet → Wallet Features and turn on **Swaps**. No API key needed."
+                     : "Swaps use the 0x aggregator and need a free API key. Open Settings → Wallet → Wallet Features, turn on **Swaps**, and paste a 0x key.")
                     .font(.system(size: 11)).foregroundStyle(WalletTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

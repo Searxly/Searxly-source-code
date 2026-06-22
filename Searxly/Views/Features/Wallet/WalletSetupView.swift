@@ -432,53 +432,106 @@ private struct PINSetupStepView: View {
     @State private var confirmPin = ""
     @State private var isConfirming = false
     @State private var mismatch = false
+    @State private var usePassphrase = false
+    @State private var tooShort = false
+
+    private var secretWord: String { usePassphrase ? "passphrase" : "PIN" }
+
+    /// Without a Secure Enclave the seed can only be wrapped under the PIN-derived key (no device
+    /// binding), so a 6-digit PIN would be brute-forceable offline. On such hardware we require a
+    /// passphrase and hide the PIN option entirely.
+    private var seAvailable: Bool { WalletKeychain.isSecureEnclaveAvailable }
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
             VStack(spacing: 6) {
-                Text(isConfirming ? "Confirm PIN" : "Set a 6-Digit PIN")
+                Text(isConfirming ? "Confirm \(usePassphrase ? "Passphrase" : "PIN")"
+                                  : (usePassphrase ? "Set a Passphrase" : "Set a 6-Digit PIN"))
                     .font(.system(size: 18, weight: .semibold))
                 Text(isConfirming
-                     ? "Enter the same PIN again to confirm."
-                     : "You'll use this PIN every time you open your wallet.")
+                     ? "Enter the same \(secretWord) again to confirm."
+                     : (usePassphrase
+                        ? "At least \(WalletConfig.minPassphraseLength) characters — much harder to brute-force than a PIN."
+                        : "You'll use this PIN every time you open your wallet."))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
 
-            HStack(spacing: 14) {
-                let displayPin = isConfirming ? confirmPin : pin
-                ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
-                    Circle()
-                        .fill(i < displayPin.count ? Color.white : Color(white: 0.20))
-                        .frame(width: 14, height: 14)
-                        .animation(.spring(response: 0.2), value: displayPin.count)
+            if !seAvailable && !isConfirming {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 12)).foregroundStyle(.orange).padding(.top, 1)
+                    Text("This Mac has no Secure Enclave, so a passphrase (not a 6-digit PIN) is required — it's what keeps your seed safe from offline guessing if the encrypted file is ever copied.")
+                        .font(.system(size: 11)).foregroundStyle(Color(white: 0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.orange.opacity(0.22), lineWidth: 0.8))
+                .padding(.horizontal, 24)
+            }
+
+            if !usePassphrase {
+                HStack(spacing: 14) {
+                    let displayPin = isConfirming ? confirmPin : pin
+                    ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
+                        Circle()
+                            .fill(i < displayPin.count ? Color.white : Color(white: 0.20))
+                            .frame(width: 14, height: 14)
+                            .animation(.spring(response: 0.2), value: displayPin.count)
+                    }
                 }
             }
 
             if mismatch {
-                Text("PINs don't match. Try again.")
+                Text("They don't match. Try again.")
                     .font(.system(size: 12))
                     .foregroundStyle(Color(red: 1, green: 0.33, blue: 0.33))
                     .transition(.opacity)
+            } else if tooShort {
+                Text("Use at least \(WalletConfig.minPassphraseLength) characters.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color(red: 1, green: 0.33, blue: 0.33))
             }
 
-            PINKeypad(pin: isConfirming ? $confirmPin : $pin, maxLength: WalletConfig.pinLength) {
-                handleComplete()
+            PINKeypad(pin: isConfirming ? $confirmPin : $pin, maxLength: WalletConfig.pinLength,
+                      onComplete: handleComplete, passphraseOverride: usePassphrase)
+                .frame(maxWidth: 240)
+
+            // The PIN ↔ passphrase toggle is only offered when a Secure Enclave is present. Without it,
+            // a passphrase is mandatory (see `seAvailable`), so we don't let the user pick a PIN.
+            if !isConfirming && seAvailable {
+                Button {
+                    usePassphrase.toggle()
+                    pin = ""; confirmPin = ""; tooShort = false
+                } label: {
+                    Text(usePassphrase ? "Use a 6-digit PIN instead" : "Use a passphrase instead (stronger)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
-            .frame(maxWidth: 240)
 
             Spacer()
         }
+        // On hardware without a Secure Enclave, force passphrase mode up front so the seed is never
+        // protected by a brute-forceable 6-digit PIN alone.
+        .onAppear { if !seAvailable { usePassphrase = true } }
     }
 
     private func handleComplete() {
+        // Belt-and-suspenders: never accept a non-passphrase secret when there's no Secure Enclave.
+        if !seAvailable { usePassphrase = true }
         if !isConfirming {
+            if usePassphrase && pin.count < WalletConfig.minPassphraseLength { tooShort = true; return }
+            tooShort = false
             isConfirming = true
         } else {
             if pin == confirmPin {
+                WalletFeatures.usesPassphrase = usePassphrase
                 onDone(pin, words)
             } else {
                 mismatch = true

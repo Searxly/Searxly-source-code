@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import os
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -71,7 +72,7 @@ final class AppleIntelligenceProvider: IntelligenceProvider {
         // without Apple Intelligence enrolled or on non-supported hardware.
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.mockAppleIntelligenceAvailability {
             if DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] Probe: MOCKED .available via DeveloperSettings.mockAppleIntelligenceAvailability")
+                Log.ai.info("[LocalAI] Probe: MOCKED .available via DeveloperSettings.mockAppleIntelligenceAvailability")
             }
             return .available
         }
@@ -82,7 +83,7 @@ final class AppleIntelligenceProvider: IntelligenceProvider {
             switch model.availability {
             case .available:
                 if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                    print("[LocalAI] Probe: SystemLanguageModel is .available")
+                    Log.ai.info("[LocalAI] Probe: SystemLanguageModel is .available")
                 }
                 return .available
             case .unavailable(let reason):
@@ -135,7 +136,7 @@ final class AppleIntelligenceProvider: IntelligenceProvider {
             }
 
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] Plain respond (no tools) — prompt len: \(prompt.count)")
+                Log.ai.info("[LocalAI] Plain respond (no tools) — prompt len: \(prompt.count)")
             }
 
             do {
@@ -256,7 +257,7 @@ final class AppleIntelligenceProvider: IntelligenceProvider {
 
             if shouldRecreate {
                 if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                    print("[LocalAI] Creating new tool-aware LanguageModelSession (tools: \(tools.count), instructions len: \(instructions?.count ?? 0))")
+                    Log.ai.info("[LocalAI] Creating new tool-aware LanguageModelSession (tools: \(tools.count), instructions len: \(instructions?.count ?? 0))")
                 }
                 if !baseForSession.isEmpty {
                     currentToolAwareSession = LanguageModelSession(tools: tools, instructions: baseForSession)
@@ -271,13 +272,13 @@ final class AppleIntelligenceProvider: IntelligenceProvider {
             }
 
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                print("[LocalAI] Calling session.respond(to:) for native tools (prompt len: \(prompt.count))")
+                Log.ai.info("[LocalAI] Calling session.respond(to:) for native tools (prompt len: \(prompt.count))")
             }
 
             do {
                 let response = try await session.respond(to: prompt)
                 if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseAILogging {
-                    print("[LocalAI] Native tools respond completed, content len: \(response.content.count)")
+                    Log.ai.info("[LocalAI] Native tools respond completed, content len: \(response.content.count)")
                 }
                 return response.content
             } catch {

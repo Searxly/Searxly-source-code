@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import os
 
 enum EncryptedDataStore {
 
@@ -45,12 +46,11 @@ enum EncryptedDataStore {
                 return .success(try decoder.decode(AppData.self, from: rawData))
             }
         } catch let error as DataEncryptor.EncryptionError {
-            print("EncryptedDataStore: CRITICAL — Encryption error during load: \(error)")
-            print("EncryptedDataStore: Blocking recovery UI — data was not modified.")
+            Log.security.error("EncryptedDataStore: CRITICAL — encryption error during load: \(error.localizedDescription, privacy: .public); blocking recovery UI, data not modified")
             notifyRecoveryRequired(for: error)
             return .decryptionFailed(error)
         } catch {
-            print("EncryptedDataStore: Failed to load data — \(error). Returning defaults.")
+            Log.security.error("EncryptedDataStore: failed to load data — \(error.localizedDescription, privacy: .public); returning defaults")
             backupCorruptFile(at: url)
             return .decodeFailed(error)
         }
@@ -84,8 +84,7 @@ enum EncryptedDataStore {
                 } else {
                     // CRITICAL: Encryption was requested but we have no key in the Keychain.
                     // Do NOT silently fall back to plaintext — this would defeat the user's explicit choice.
-                    print("EncryptedDataStore: CRITICAL ERROR — Encryption is enabled but no key exists in Keychain. Refusing to write unprotected data.")
-                    print("EncryptedDataStore: Your data was NOT saved to avoid leaking it in plaintext. Please re-enable encryption or restore your recovery key.")
+                    Log.security.error("EncryptedDataStore: CRITICAL — encryption enabled but no key in Keychain. Refusing to write plaintext; data NOT saved. Re-enable encryption or restore your recovery key.")
                     // We leave the file untouched rather than risk writing plaintext.
                     return
                 }
@@ -94,7 +93,7 @@ enum EncryptedDataStore {
                 // (plaintext success log removed)
             }
         } catch {
-            print("EncryptedDataStore: Failed to save data — \(error)")
+            Log.security.error("EncryptedDataStore: failed to save data — \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -120,7 +119,7 @@ enum EncryptedDataStore {
             let meta = try decoder.decode(EncryptionMetadata.self, from: data)
             return meta.encryptionEnabled
         } catch {
-            print("EncryptedDataStore: Failed to read encryption metadata — \(error)")
+            Log.security.error("EncryptedDataStore: failed to read encryption metadata — \(error.localizedDescription, privacy: .public)")
             return false
         }
     }
@@ -137,10 +136,40 @@ enum EncryptedDataStore {
             let data = try encoder.encode(meta)
             // Use the strongest practical protection for the metadata toggle file
             try data.write(to: metadataURL, options: [.atomic, .completeFileProtection])
-            print("EncryptedDataStore: Encryption enabled set to \(enabled)")
+            Log.security.info("EncryptedDataStore: encryption-enabled set to \(enabled, privacy: .public)")
         } catch {
-            print("EncryptedDataStore: Failed to write encryption metadata — \(error)")
+            Log.security.error("EncryptedDataStore: failed to write encryption metadata — \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Last-resort reset: erases the local data store so the app can start fresh.
+    ///
+    /// This is the only way out when the encrypted `AppData.json` cannot be decrypted and the user has
+    /// no recovery code or backup — e.g. the Keychain encryption key was orphaned by an app-identity
+    /// change (sandbox container / signing / team-ID flip), which makes the on-disk blob permanently
+    /// unreadable. The sandbox protects the container from any outside tool, so only the app itself can
+    /// remove these files.
+    ///
+    /// Removes `AppData.json`, the encryption metadata toggle, and any quarantined `AppData.json.broken-*`
+    /// copies, then turns encryption off. Browsing history / bookmarks / instances / settings are lost;
+    /// the wallet seed (WalletKeychain) and saved passwords (PasswordVaultSecureStore) live in separate
+    /// stores and are NOT affected.
+    static func eraseLocalData() {
+        let fm = FileManager.default
+        let appDataURL = Persistence.appDataFileURL()
+        let dir = appDataURL.deletingLastPathComponent()
+
+        try? fm.removeItem(at: appDataURL)
+        try? fm.removeItem(at: encryptionMetadataURL())
+
+        if let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+            for url in contents where url.lastPathComponent.hasPrefix("AppData.json.broken-") {
+                try? fm.removeItem(at: url)
+            }
+        }
+
+        // Future saves start as plaintext defaults until the user explicitly re-enables encryption.
+        setEncryptionEnabled(false)
     }
 
     // MARK: - Helpers
@@ -195,9 +224,9 @@ enum EncryptedDataStore {
         let backupURL = url.deletingLastPathComponent().appendingPathComponent("AppData.json.broken-\(ts)")
         do {
             try FileManager.default.moveItem(at: url, to: backupURL)
-            print("EncryptedDataStore: Backed up unreadable data file to \(backupURL.lastPathComponent). You can restore it manually after fixing the decode issue.")
+            Log.security.notice("EncryptedDataStore: backed up unreadable data file to \(backupURL.lastPathComponent, privacy: .public); restore manually after fixing the decode issue")
         } catch {
-            print("EncryptedDataStore: Could not backup corrupt file: \(error)")
+            Log.security.error("EncryptedDataStore: could not back up corrupt file: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

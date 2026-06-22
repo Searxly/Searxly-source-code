@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os
 
 /// Options forwarded to the SearXNG JSON search API.
 struct SearXNGSearchOptions: Sendable {
@@ -191,14 +192,14 @@ final class SearXNGService {
                     options: options
                 )
                 if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseSearXNGLogging {
-                    print("[Dev][SearXNG] Search succeeded via \(instance.displayName)")
+                    Log.search.info("[Dev][SearXNG] Search succeeded via \(instance.displayName)")
                 }
                 // Normal success is silent for privacy (no need to log every search)
                 return (results, instance.url)
             } catch {
                 lastError = error
                 if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseSearXNGLogging {
-                    print("[Dev][SearXNG] Instance \(instance.displayName) failed: \(error.localizedDescription). Trying next...")
+                    Log.search.error("[Dev][SearXNG] Instance \(instance.displayName) failed: \(error.localizedDescription). Trying next...")
                 }
             }
         }

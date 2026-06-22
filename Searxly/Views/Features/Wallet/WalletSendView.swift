@@ -25,6 +25,8 @@ struct WalletSendView: View {
     @State private var showContacts = false
     @State private var savingContact = false
     @State private var contactLabel = ""
+    @State private var sendSim: WalletNetwork.SimResult? = nil   // revert dry-run on the confirm sheet
+    @State private var simChecking = false
 
     private var selectedToken: WalletToken? {
         wallet.tokens.first { $0.id == selectedTokenID }
@@ -298,6 +300,7 @@ struct WalletSendView: View {
                         .textFieldStyle(.plain)
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.white)
+                        .accessibilityLabel("Recipient address or name")
                         .onChange(of: toAddress) { _, _ in ackRisk = false; resolveNameIfNeeded() }
                     if resolving { ProgressView().controlSize(.mini).scaleEffect(0.7) }
                     if !toAddress.isEmpty {
@@ -352,6 +355,7 @@ struct WalletSendView: View {
                         .textFieldStyle(.plain)
                         .font(.system(size: 15, weight: .medium, design: .monospaced))
                         .foregroundStyle(.white)
+                        .accessibilityLabel("Amount to send")
                     Text(selectedToken?.symbol ?? "")
                         .font(.system(size: 12))
                         .foregroundStyle(Color(white: 0.4))
@@ -426,6 +430,8 @@ struct WalletSendView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSend || isSending)
+                .accessibilityLabel(isSending ? "Sending" : "Send \(selectedToken?.symbol ?? "")")
+                .accessibilityHint(canSend ? "" : "Enter a valid recipient and amount first")
             }
             .padding(20)
         }
@@ -503,12 +509,15 @@ struct WalletSendView: View {
                 Divider().opacity(0.08)
                 confirmRow("Amount",  value: "\(amountText) \(selectedToken?.symbol ?? "")")
                 Divider().opacity(0.08)
-                confirmRow("To",      value: abbreviated(effectiveRecipient ?? toAddress), mono: true)
+                confirmRow("To",      value: abbreviated(effectiveRecipient ?? toAddress), mono: true,
+                           accessibilityValueOverride: "address \(effectiveRecipient ?? toAddress)")
                 Divider().opacity(0.08)
                 confirmRow("Network", value: wallet.activeChain.name)
             }
             .background(WalletTheme.surfaceField, in: RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 24)
+
+            sendSimBanner
 
             VStack(spacing: 10) {
                 if wallet.biometricUnlockEnabled && wallet.biometricAvailable {
@@ -528,21 +537,26 @@ struct WalletSendView: View {
                     }
                     .buttonStyle(.plain)
 
-                    Text("or enter your PIN")
+                    Text(WalletFeatures.usesPassphrase ? "or enter your passphrase" : "or enter your PIN")
                         .font(.system(size: 11))
                         .foregroundStyle(Color(white: 0.4))
                 } else {
-                    Text("Enter your PIN to authorize")
+                    Text(WalletFeatures.usesPassphrase ? "Enter your passphrase to authorize" : "Enter your PIN to authorize")
                         .font(.system(size: 12))
                         .foregroundStyle(Color(white: 0.4))
                 }
 
-                HStack(spacing: 12) {
-                    ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
-                        Circle()
-                            .fill(i < pin.count ? Color.white : Color(white: 0.2))
-                            .frame(width: 11, height: 11)
+                if !WalletFeatures.usesPassphrase {
+                    HStack(spacing: 12) {
+                        ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
+                            Circle()
+                                .fill(i < pin.count ? Color.white : Color(white: 0.2))
+                                .frame(width: 11, height: 11)
+                        }
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("PIN entry")
+                    .accessibilityValue("\(pin.count) of \(WalletConfig.pinLength) digits entered")
                 }
 
                 if pinError {
@@ -563,6 +577,51 @@ struct WalletSendView: View {
         .frame(width: 360)
         .background(WalletTheme.canvas)
         .preferredColorScheme(.dark)
+        .task { await runSendSimulation() }
+    }
+
+    /// Dry-runs the transaction (eth_call) when the confirm sheet appears, warning if it would revert —
+    /// the same protection the dApp approval sheet has, so an in-app send can't silently waste gas.
+    @ViewBuilder
+    private var sendSimBanner: some View {
+        if simChecking {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini).scaleEffect(0.7)
+                Text("Checking transaction…").font(.system(size: 11)).foregroundStyle(Color(white: 0.45))
+            }
+        } else if case .revert(let reason) = sendSim {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "xmark.octagon.fill").font(.system(size: 11)).foregroundStyle(WalletTheme.negative).padding(.top, 1)
+                Text("This is likely to FAIL\(reason == "would fail" ? "" : ": \(reason)") — you'd still pay the gas fee.")
+                    .font(.system(size: 11)).foregroundStyle(WalletTheme.negative).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(WalletTheme.negative.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isStaticText)
+            .padding(.horizontal, 24)
+        }
+    }
+
+    /// Builds (to, valueHex, dataHex) for the pending send, mirroring WalletManager.send's native-vs-ERC20 split.
+    private func simParams() -> (to: String, valueHex: String, dataHex: String)? {
+        guard let token = selectedToken, let amount = parsedAmount, let recipient = effectiveRecipient else { return nil }
+        let amt = WeiConverter.baseUnitBytes(amount: amount, decimals: token.decimals)
+        if let contract = token.contractAddress {
+            let data = EthereumTransaction.erc20TransferData(to: recipient, amountBytes: amt)
+            return (contract, "0x0", "0x" + data.map { String(format: "%02x", $0) }.joined())
+        }
+        let valueHex = "0x" + (amt.isEmpty ? "0" : amt.map { String(format: "%02x", $0) }.joined())
+        return (recipient, valueHex, "0x")
+    }
+
+    private func runSendSimulation() async {
+        sendSim = nil
+        guard let from = wallet.activeAddress, let p = simParams() else { return }
+        simChecking = true
+        sendSim = await WalletNetwork.simulateCall(from: from, to: p.to, valueHex: p.valueHex, dataHex: p.dataHex, rpc: wallet.activeRPCURL)
+        simChecking = false
     }
 
     @ViewBuilder
@@ -573,7 +632,8 @@ struct WalletSendView: View {
     }
 
     @ViewBuilder
-    private func confirmRow(_ label: String, value: String, mono: Bool = false) -> some View {
+    private func confirmRow(_ label: String, value: String, mono: Bool = false,
+                            accessibilityValueOverride: String? = nil) -> some View {
         HStack {
             Text(label)
                 .font(.system(size: 13))
@@ -585,6 +645,11 @@ struct WalletSendView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        // Read the FULL value to VoiceOver (the visible address is abbreviated) so the user can verify
+        // exactly where funds are going before authorizing.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(accessibilityValueOverride ?? value)
     }
 
     private func abbreviated(_ address: String) -> String {

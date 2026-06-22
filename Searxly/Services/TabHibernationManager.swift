@@ -11,6 +11,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 import WebKit
 
@@ -136,7 +137,7 @@ final class TabHibernationManager {
         lastAccessTimes[tab.id] = Date()
 
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseTabLifecycleLogging {
-            print("[Dev] Tab selected: \(tab.title) (hibernated: \(tab.isHibernated))")
+            Log.web.info("[Dev] Tab selected: \(tab.title) (hibernated: \(tab.isHibernated))")
         }
 
         // Special non-web tabs (e.g. passwords vault) never participate in hibernation.
@@ -158,7 +159,7 @@ final class TabHibernationManager {
         lastAccessTimes[tab.id] = Date()
 
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseTabLifecycleLogging {
-            print("[Dev] Woke up tab: \(tab.title)")
+            Log.web.info("[Dev] Woke up tab: \(tab.title)")
         }
     }
 
@@ -168,7 +169,7 @@ final class TabHibernationManager {
         tab.hibernate()
 
         if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseTabLifecycleLogging {
-            print("[Dev] Hibernated tab: \(tab.title)")
+            Log.web.info("[Dev] Hibernated tab: \(tab.title)")
         }
     }
 

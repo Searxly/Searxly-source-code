@@ -7,6 +7,7 @@
 //
 
 import WebKit
+import os
 
 /// Represents the privacy level of a browser tab.
 /// - .standard: Normal persistent cookies, storage, and cache (default)
@@ -163,7 +164,7 @@ struct WebViewFactory {
             if configuration.applicationNameForUserAgent == nil {
                 configuration.applicationNameForUserAgent = "Searxly/1.0"
             }
-            let webView = WKWebView(frame: .zero, configuration: configuration)
+            let webView = SearxlyWebView(frame: .zero, configuration: configuration)
             return webView
 
         case .privateEphemeral:
@@ -178,7 +179,7 @@ struct WebViewFactory {
             // Extra hardening that only makes sense for ephemeral sessions
             configuration.applicationNameForUserAgent = "Searxly/1.0 (Private)"
 
-            let webView = WKWebView(frame: .zero, configuration: configuration)
+            let webView = SearxlyWebView(frame: .zero, configuration: configuration)
             return webView
 
             // FUTURE (per-site exceptions): When we have a host allow-list,
@@ -299,6 +300,6 @@ struct WebViewFactory {
         precondition(Thread.isMainThread, "WebViewFactory.clearEphemeralData must be called on the main thread")
         // Currently a no-op placeholder. Real private tabs are isolated by design.
         // In the future we can iterate over active private webviews and force-clear here if desired.
-        print("WebViewFactory: clearEphemeralData() called (ephemeral tabs are self-cleaning)")
+        Log.web.info("WebViewFactory: clearEphemeralData() called (ephemeral tabs are self-cleaning)")
     }
 }

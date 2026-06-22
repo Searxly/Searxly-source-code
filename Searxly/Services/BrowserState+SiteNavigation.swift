@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 import WebKit
 
@@ -151,7 +152,7 @@ extension BrowserState {
             }
 
             if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseSearXNGLogging {
-                print("[SiteResolver] openWebsite resolutionPath=\(resolutionPath) query=\(searchQuery) trimmed=\(trimmed) opened=\(opened)")
+                Log.web.info("[SiteResolver] openWebsite resolutionPath=\(resolutionPath) query=\(searchQuery) trimmed=\(trimmed) opened=\(opened)")
             }
         }
     }

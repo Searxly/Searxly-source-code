@@ -75,3 +75,19 @@ scripts/add_celebrity_face.sh
 
 # Third-party NSFW domain blocklist — kept private (attribution/redistribution)
 Searxly/ContentSafety/
+
+# ── Secrets & signing material (never commit) ──────────────────────────────────
+# The Searxly gateway app token is supplied per-build via the SEARXLY_GATEWAY_APP_TOKEN
+# env var or a gitignored xcconfig — the compiled-in fallback in SearxlyGateway.swift is blank.
+Secrets.xcconfig
+*.secret.xcconfig
+*.secrets.xcconfig
+# Any locally-filled gateway unit (the committed searxly-gateway.service has placeholders only)
+gateway/*.local
+gateway/.env
+# Apple signing / provisioning material
+*.p12
+*.cer
+*.pem
+*.mobileprovision
+*.provisionprofile

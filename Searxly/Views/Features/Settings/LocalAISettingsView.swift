@@ -9,6 +9,7 @@ struct LocalAISettingsView: View {
     @State private var manager = LocalIntelligenceManager.shared
     @State private var showActivityLog = false
     @State private var showRAGAudit = false
+    @State private var showCloudEgressConfirm = false
 
     var body: some View {
         SettingsPane {
@@ -55,6 +56,20 @@ struct LocalAISettingsView: View {
         }
         .sheet(isPresented: $showActivityLog) { activityLogSheet }
         .sheet(isPresented: $showRAGAudit) { ragAuditSheet }
+        .alert("Searxly AI runs in the cloud", isPresented: $showCloudEgressConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Enable") { enableSearxlyAICloud() }
+        } message: {
+            Text("Unlike on-device AI, Searxly AI sends what you ask it off this Mac to Searxly's cloud: your chat messages, any page text you ask it to summarize, and the private search results behind a grounded answer. It stays off until you pick \"Searxly AI\" in the chat. Enable it?")
+        }
+    }
+
+    /// Actually flips Searxly AI (cloud) on after the user acknowledges the egress disclosure.
+    private func enableSearxlyAICloud() {
+        manager.preferences.searxlyAIEnabled = true
+        manager.persistPreferences()
+        LocalIntelligenceManager.shared.noteSearxlyAIToggled()
+        Task { await LocalIntelligenceManager.shared.refreshAvailability() }
     }
 
     // MARK: - Sections
@@ -290,19 +305,24 @@ struct LocalAISettingsView: View {
     private var searxlyAISection: some View {
         SettingsSection(
             title: "Searxly AI (cloud)",
-            footer: "Searxly AI runs in the cloud — no model to install. Turn it on, then pick Searxly AI in the chat. Your messages are sent to Searxly's cloud to generate answers."
+            footer: "Searxly AI runs in the cloud — no model to install. Unlike on-device AI, it sends your chat messages, any page text you summarize, and the search results behind grounded answers off this Mac to Searxly's cloud. It only does so once you pick Searxly AI in the chat."
         ) {
             SettingsToggleRow(
                 title: "Enable Searxly AI",
                 description: "Adds Searxly AI to the chat model selector. Some prompts are free.",
                 isOn: Binding(
                     get: { manager.preferences.searxlyAIEnabled },
-                    set: {
-                        manager.preferences.searxlyAIEnabled = $0
-                        if !$0 { manager.preferences.useSearxlyAI = false }
-                        manager.persistPreferences()
-                        LocalIntelligenceManager.shared.noteSearxlyAIToggled()
-                        Task { await LocalIntelligenceManager.shared.refreshAvailability() }
+                    set: { newValue in
+                        if newValue && !manager.preferences.searxlyAIEnabled {
+                            // First enable: require explicit acknowledgement that data leaves the Mac.
+                            showCloudEgressConfirm = true
+                        } else {
+                            manager.preferences.searxlyAIEnabled = newValue
+                            if !newValue { manager.preferences.useSearxlyAI = false }
+                            manager.persistPreferences()
+                            LocalIntelligenceManager.shared.noteSearxlyAIToggled()
+                            Task { await LocalIntelligenceManager.shared.refreshAvailability() }
+                        }
                     }
                 )
             )

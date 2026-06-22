@@ -11,6 +11,7 @@
 //
 
 import Foundation
+import os
 import Security
 
 enum KeychainManager {
@@ -18,106 +19,108 @@ enum KeychainManager {
     private static let service = "com.searxly.encryption"
     private static let account = "main-encryption-key"
 
+    // Use the data-protection keychain (no signature-ACL prompts) when available; otherwise legacy.
+    private static var dp: Bool { KeychainDataProtection.isAvailable }
+
+    private static func baseQuery(dataProtection: Bool) -> [String: Any] {
+        var q: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        if dataProtection { q[kSecUseDataProtectionKeychain as String] = true }
+        return q
+    }
+
     // MARK: - Public API
 
-    /// Saves a 256-bit (32 byte) key to the Keychain.
-    /// Uses update-or-add to preserve the existing ACL ("Always Allow" grant).
-    /// Calling deleteKey() first would destroy that ACL and re-trigger the system prompt.
+    /// Saves a 256-bit (32 byte) key to the Keychain (data-protection keychain when available).
+    /// Uses update-or-add so a prior item's grant is preserved.
     @discardableResult
     static func saveKey(_ key: Data) -> Bool {
         guard key.count == 32 else {
-            print("KeychainManager: Key must be exactly 32 bytes")
+            Log.security.error("KeychainManager: key must be exactly 32 bytes")
             return false
         }
 
-        let findQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        let updateAttributes: [String: Any] = [
-            kSecValueData as String: key,
-        ]
-        let updateStatus = SecItemUpdate(findQuery as CFDictionary, updateAttributes as CFDictionary)
-        if updateStatus == errSecSuccess {
-            print("KeychainManager: Encryption key updated (ACL preserved)")
-            return true
-        }
+        // Write to the data-protection keychain when it's usable (prompt-free on a correctly-signed
+        // build) AND always keep a copy in the legacy keychain. We deliberately NEVER delete a copy:
+        // a key that exists in only one store gets orphaned the moment data-protection availability
+        // flips between builds (e.g. a signing / entitlement / team change) — which is exactly how a
+        // user gets locked out of their encrypted data. Two device-only copies cost nothing and keep
+        // the key reachable no matter which store the running build can see.
+        var savedAny = false
+        if dp { savedAny = upsert(key, dataProtection: true) }
+        if upsert(key, dataProtection: false) { savedAny = true }
+        if !savedAny { Log.security.error("KeychainManager: failed to save key to any keychain") }
+        return savedAny
+    }
 
-        // Item doesn't exist yet — add it fresh.
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: key,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            kSecAttrSynchronizable as String: false,
-        ]
-        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-        if addStatus == errSecSuccess {
-            print("KeychainManager: Encryption key saved successfully")
+    /// Update-or-add the key into one keychain store. Update first so an existing item's ACL grant is
+    /// preserved (avoids re-triggering the legacy signature prompt).
+    @discardableResult
+    private static func upsert(_ key: Data, dataProtection: Bool) -> Bool {
+        let find = baseQuery(dataProtection: dataProtection)
+        if SecItemUpdate(find as CFDictionary, [kSecValueData as String: key] as CFDictionary) == errSecSuccess {
             return true
-        } else {
-            print("KeychainManager: Failed to save key. Status: \(addStatus)")
-            return false
         }
+        var add = baseQuery(dataProtection: dataProtection)
+        add[kSecValueData as String] = key
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        add[kSecAttrSynchronizable as String] = false
+        return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
     }
 
     /// Loads the encryption key from the Keychain.
     /// Returns nil if the key does not exist or cannot be accessed (e.g. device locked).
     static func loadKey() -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        // Try BOTH stores regardless of the probe, so a key written under one is never orphaned when
+        // data-protection availability changes. Prefer data-protection (no signature-ACL prompt on a
+        // correctly-signed build); fall back to legacy. Querying the data-protection keychain when the
+        // entitlement is absent just returns "not found", so trying it first is always safe.
+        if let k = rawLoad(dataProtection: true) { return k }
+        if let k = rawLoad(dataProtection: false) {
+            // Mirror into the data-protection keychain when usable so future reads are prompt-free —
+            // but keep the legacy copy as permanent lockout insurance (never delete it).
+            if dp { _ = upsert(k, dataProtection: true) }
+            return k
+        }
+        return nil
+    }
 
+    private static func rawLoad(dataProtection: Bool) -> Data? {
+        var query = baseQuery(dataProtection: dataProtection)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let keyData = result as? Data,
-              keyData.count == 32 else {
-            if status != errSecItemNotFound {
-                print("KeychainManager: Failed to load key. Status: \(status)")
-            }
+        guard status == errSecSuccess, let keyData = result as? Data, keyData.count == 32 else {
             return nil
         }
-
         return keyData
     }
 
-    /// Deletes the encryption key from the Keychain.
+    /// Deletes the encryption key from the Keychain (both keychains, so a delete is total).
     @discardableResult
     static func deleteKey() -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-
-        let status = SecItemDelete(query as CFDictionary)
-
-        if status == errSecSuccess || status == errSecItemNotFound {
-            return true
-        } else {
-            print("KeychainManager: Failed to delete key. Status: \(status)")
-            return false
+        var ok = true
+        if dp {
+            let s = SecItemDelete(baseQuery(dataProtection: true) as CFDictionary)
+            ok = (s == errSecSuccess || s == errSecItemNotFound)
         }
+        let s2 = SecItemDelete(baseQuery(dataProtection: false) as CFDictionary)
+        return ok && (s2 == errSecSuccess || s2 == errSecItemNotFound)
     }
 
     /// Checks whether a key item exists in the Keychain (without reading the secret).
     static func keyExists() -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: false,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+        func exists(dataProtection: Bool) -> Bool {
+            var q = baseQuery(dataProtection: dataProtection)
+            q[kSecReturnData as String] = false
+            q[kSecMatchLimit as String] = kSecMatchLimitOne
+            return SecItemCopyMatching(q as CFDictionary, nil) == errSecSuccess
+        }
+        return exists(dataProtection: true) || exists(dataProtection: false)
     }
 
     // MARK: - Recovery Support (Phase 2)
@@ -135,7 +138,8 @@ enum KeychainManager {
         guard let keyData = loadKey() else {
             return nil
         }
-        print("KeychainManager: !!! DANGER - Encryption recovery key was exported. This key can decrypt all user data.")
+        // Audit event (persisted): the action is logged, never the key itself.
+        Log.security.notice("KeychainManager: encryption recovery key was exported (can decrypt all user data)")
         return keyData.base64EncodedString()
     }
 
@@ -144,10 +148,10 @@ enum KeychainManager {
     static func importKeyFromRecoveryCode(_ base64String: String) -> Bool {
         guard let keyData = Data(base64Encoded: base64String),
               keyData.count == 32 else {
-            print("KeychainManager: Invalid recovery code format")
+            Log.security.error("KeychainManager: invalid recovery code format")
             return false
         }
-        print("KeychainManager: Importing encryption key from recovery code. This will replace the current key.")
+        Log.security.notice("KeychainManager: importing encryption key from recovery code (replaces current key)")
         return saveKey(keyData)
     }
 }

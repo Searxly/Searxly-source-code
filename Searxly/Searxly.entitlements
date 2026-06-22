@@ -20,6 +20,24 @@
 	<key>com.apple.security.network.client</key>
 	<true/>
 
+	<!--
+		Keychain access group — REQUIRED for the modern data-protection keychain
+		(kSecUseDataProtectionKeychain), which the wallet uses for the seed phrase, API keys, etc.
+
+		Without an access group (this, or an application-identifier from a provisioning profile), the
+		data-protection keychain has no scope and its capability probe fails, so WalletKeychain falls
+		back to the LEGACY keychain. The legacy keychain gates each item by the app's code signature,
+		so every dev rebuild re-prompts "Searxly wants to use your confidential information…" for EVERY
+		wallet item — the popup spam. This one entitlement fixes that.
+
+		$(AppIdentifierPrefix) is substituted with the signing team's App ID prefix at build time, so it
+		works on both a personal and a paid team without hardcoding the team id.
+	-->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.myrhex.Searxly</string>
+	</array>
+
 	<!-- Downloads folder: used by downloadDockerDesktopIfNeededAndPrepare() to save Docker.dmg -->
 	<key>com.apple.security.files.downloads.read-write</key>
 	<true/>
@@ -76,6 +94,9 @@
 	<!-- Broad temporary exceptions so WebContent can reach system services -->
 	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
 	<array>
+		<!-- Sparkle auto-update installer XPC services (sandboxed app). -->
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
 		<string>com.apple.runningboard</string>
 		<string>com.apple.pboard</string>
 		<string>com.apple.lsd</string>

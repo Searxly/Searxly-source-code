@@ -284,16 +284,15 @@ enum WalletNetwork {
     /// archive RPC (public RPCs cap getLogs ranges). Returns nil if the API errors / has no key.
     static func approvalSpendersViaExplorer(owner: String, tokenContracts: [String]) async -> [(token: String, spender: String)]? {
         let ownerTopic = "0x" + String(owner.dropFirst(2)).lowercased().leftPadded(toLength: 64)
-        let key = WalletFeatures.basescanAPIKey
-        guard !key.isEmpty else { return nil }   // the v2 logs endpoint requires a key
+        // The v2 logs endpoint requires a key — satisfied by the user's own key OR the gateway's.
+        guard !WalletFeatures.basescanAPIKey.isEmpty || SearxlyGateway.isConfigured else { return nil }
 
         var seen = Set<String>()
         var pairs: [(String, String)] = []
         var anySuccess = false
 
         for token in tokenContracts {
-            var comps = URLComponents(string: WalletConfig.historyAPIBase)
-            comps?.queryItems = [
+            guard let req = explorerRequest([
                 .init(name: "chainid", value: String(WalletConfig.baseChainID)),
                 .init(name: "module", value: "logs"),
                 .init(name: "action", value: "getLogs"),
@@ -301,10 +300,8 @@ enum WalletNetwork {
                 .init(name: "topic0", value: approvalTopic),
                 .init(name: "topic1", value: ownerTopic),
                 .init(name: "topic0_1_opr", value: "and"),
-                .init(name: "apikey", value: key),
-            ]
-            guard let url = comps?.url,
-                  let (data, _) = try? await URLSession.shared.data(from: url),
+            ], preferUserKey: true),
+                  let (data, _) = try? await URLSession.shared.data(for: req),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { continue }
 
@@ -430,10 +427,9 @@ enum WalletNetwork {
     @MainActor
     static func fetchHistory(address: String, chainId: Int = WalletConfig.baseChainID,
                              nativeSymbol: String = "ETH") async -> [WalletActivityEntry] {
-        let key = WalletFeatures.basescanAPIKey
         var entries: [WalletActivityEntry] = []
 
-        if let normal = await etherscanAccount(action: "txlist", address: address, key: key, chainId: chainId) {
+        if let normal = await etherscanAccount(action: "txlist", address: address, chainId: chainId) {
             for tx in normal.prefix(25) {
                 guard let hash = tx["hash"] as? String else { continue }
                 let from = (tx["from"] as? String) ?? ""
@@ -452,7 +448,7 @@ enum WalletNetwork {
             }
         }
 
-        if let tokens = await etherscanAccount(action: "tokentx", address: address, key: key) {
+        if let tokens = await etherscanAccount(action: "tokentx", address: address) {
             for tx in tokens.prefix(25) {
                 guard let hash = tx["hash"] as? String else { continue }
                 let from = (tx["from"] as? String) ?? ""
@@ -477,7 +473,7 @@ enum WalletNetwork {
     @MainActor
     static func discoverTokens(address: String, chainId: Int = WalletConfig.baseChainID) async -> [(contract: String, symbol: String, name: String, decimals: Int)] {
         guard WalletFeatures.tokenDiscovery,
-              let rows = await etherscanAccount(action: "tokentx", address: address, key: WalletFeatures.basescanAPIKey, chainId: chainId)
+              let rows = await etherscanAccount(action: "tokentx", address: address, chainId: chainId)
         else { return [] }
         var seen = Set<String>()
         var result: [(String, String, String, Int)] = []
@@ -492,10 +488,9 @@ enum WalletNetwork {
         return result
     }
 
-    private static func etherscanAccount(action: String, address: String, key: String,
+    private static func etherscanAccount(action: String, address: String,
                                          chainId: Int = WalletConfig.baseChainID) async -> [[String: Any]]? {
-        var comps = URLComponents(string: WalletConfig.historyAPIBase)
-        comps?.queryItems = [
+        guard let req = explorerRequest([
             .init(name: "chainid", value: String(chainId)),
             .init(name: "module", value: "account"),
             .init(name: "action", value: action),
@@ -503,13 +498,34 @@ enum WalletNetwork {
             .init(name: "sort", value: "desc"),
             .init(name: "page", value: "1"),
             .init(name: "offset", value: "25"),
-            .init(name: "apikey", value: key.isEmpty ? "YourApiKeyToken" : key),
-        ]
-        guard let url = comps?.url,
-              let (data, _) = try? await URLSession.shared.data(from: url),
+        ]),
+              let (data, _) = try? await URLSession.shared.data(for: req),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let result = json["result"] as? [[String: Any]] else { return nil }
         return result
+    }
+
+    /// Builds a GET request to the explorer API. History/discovery (`account`) ALWAYS prefer the
+    /// Searxly gateway when it's configured: it fronts Blockscout, which is free and — unlike a user's
+    /// *free* Etherscan key — actually covers Base, so a stray personal key can't silently break
+    /// history. Only the approval-logs scan passes `preferUserKey: true`, because Blockscout's getLogs
+    /// is limited and a user's (paid) Etherscan key works better there. Pass items WITHOUT an `apikey`.
+    private static func explorerRequest(_ items: [URLQueryItem], preferUserKey: Bool = false) -> URLRequest? {
+        let userKey = WalletFeatures.basescanAPIKey
+        let useGateway = preferUserKey ? (userKey.isEmpty && SearxlyGateway.isConfigured)
+                                       : SearxlyGateway.isConfigured
+
+        var query = items
+        var comps = URLComponents(string: useGateway ? SearxlyGateway.etherscanBase : WalletConfig.historyAPIBase)
+        if !useGateway {
+            // Direct to Etherscan: attach the user's key, or a low-rate placeholder when keyless.
+            query.append(.init(name: "apikey", value: userKey.isEmpty ? "YourApiKeyToken" : userKey))
+        }
+        comps?.queryItems = query
+        guard let url = comps?.url else { return nil }
+        var req = URLRequest(url: url)
+        if useGateway { req.setValue(SearxlyGateway.bearer, forHTTPHeaderField: "Authorization") }
+        return req
     }
 
     private static func formatAmount(_ v: Double) -> String {

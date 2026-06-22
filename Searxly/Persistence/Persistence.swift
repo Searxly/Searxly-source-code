@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os
 
 // MARK: - App Data Container
 
@@ -376,14 +377,14 @@ enum Persistence {
         var current = load()
         current.history = []
         save(current)
-        print("Persistence: History cleared.")
+        Log.privacy.info("Persistence: history cleared")
     }
 
     static func clearBookmarks() {
         var current = load()
         current.bookmarks = []
         save(current)
-        print("Persistence: Bookmarks cleared.")
+        Log.privacy.info("Persistence: bookmarks cleared")
     }
 
     /// Clears only bookmarks whose URL host matches the given normalized host (or subdomain).
@@ -398,7 +399,8 @@ enum Persistence {
         }
         if current.bookmarks.count != before {
             save(current)
-            print("Persistence: Cleared bookmarks matching host \(matchingHost)")
+            // Host is user data — redacted in release.
+            Log.privacy.info("Persistence: cleared bookmarks matching host \(matchingHost)")
         }
     }
 
@@ -408,7 +410,7 @@ enum Persistence {
         var current = load()
         current.historyEnabled = enabled
         save(current)
-        print("Persistence: historyEnabled set to \(enabled)")
+        Log.privacy.info("Persistence: historyEnabled set to \(enabled, privacy: .public)")
     }
 
     /// One-time migration: if the old UserDefaults key exists, pull its value into AppData and remove the key.
@@ -420,7 +422,7 @@ enum Persistence {
             data.historyEnabled = oldValue
             save(data)
             UserDefaults.standard.removeObject(forKey: oldKey)
-            print("Persistence: Migrated historyEnabled from UserDefaults to AppData.json (value: \(oldValue))")
+            Log.app.info("Persistence: migrated historyEnabled from UserDefaults to AppData.json (value: \(oldValue, privacy: .public))")
         }
     }
 
@@ -439,7 +441,7 @@ enum Persistence {
         var current = load()
         current.defaultNewTabsToPrivate = enabled
         save(current)
-        print("Persistence: defaultNewTabsToPrivate set to \(enabled)")
+        Log.privacy.info("Persistence: defaultNewTabsToPrivate set to \(enabled, privacy: .public)")
     }
 
     /// One-time migration for the new default tab privacy preference.
@@ -451,7 +453,7 @@ enum Persistence {
             data.defaultNewTabsToPrivate = oldValue
             save(data)
             UserDefaults.standard.removeObject(forKey: oldKey)
-            print("Persistence: Migrated defaultNewTabsToPrivate from UserDefaults (value: \(oldValue))")
+            Log.app.info("Persistence: migrated defaultNewTabsToPrivate from UserDefaults (value: \(oldValue, privacy: .public))")
         }
     }
 
@@ -483,18 +485,18 @@ enum Persistence {
             save(current)
             UserDefaults.standard.removeObject(forKey: snapshotsKey)
             migrated = true
-            print("Persistence: Migrated tab snapshots from UserDefaults into AppData.json")
+            Log.app.info("Persistence: migrated tab snapshots from UserDefaults into AppData.json")
         }
 
         // Clean up the very old plain URL array key
         if UserDefaults.standard.object(forKey: legacyKey) != nil {
             UserDefaults.standard.removeObject(forKey: legacyKey)
             migrated = true
-            print("Persistence: Removed legacy session URL array from UserDefaults.")
+            Log.app.info("Persistence: removed legacy session URL array from UserDefaults")
         }
 
         if migrated {
-            print("Persistence: Session snapshot migration complete.")
+            Log.app.info("Persistence: session snapshot migration complete")
         }
     }
 

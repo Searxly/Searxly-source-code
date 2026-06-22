@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import os
 import WebKit
 
 struct WebViewRepresentable: NSViewRepresentable {
@@ -108,7 +109,7 @@ struct WebViewRepresentable: NSViewRepresentable {
             return
         }
 
-        webView.evaluateJavaScript(Self.readerExtractionScript) { result, error in
+        webView.evaluateJavaScript(ReaderExtraction.script) { result, error in
             if let dict = result as? [String: Any],
                let html = dict["html"] as? String,
                let title = dict["title"] as? String {
@@ -117,30 +118,11 @@ struct WebViewRepresentable: NSViewRepresentable {
                 }
             } else if let error {
                 if DeveloperSettings.shared.isEnabled && DeveloperSettings.shared.verboseTabLifecycleLogging {
-                    print("[Dev] Reader extraction error: \(error)")
+                    Log.web.error("[Dev] Reader extraction error: \(error)")
                 }
             }
         }
     }
-
-    static let readerExtractionScript = """
-    (function() {
-        let article = document.querySelector('article') || 
-                      document.querySelector('main') || 
-                      document.querySelector('.post-content') || 
-                      document.querySelector('#content') || 
-                      document.body;
-
-        const junkSelectors = ['script', 'style', 'nav', 'footer', 'aside', '.ad', '.ads', '.advertisement', '.sidebar', '#sidebar', '.comments'];
-        junkSelectors.forEach(sel => {
-            article.querySelectorAll(sel).forEach(el => el.remove());
-        });
-
-        const cleanHTML = article.innerHTML;
-        const title = document.title || '';
-        return { title, html: cleanHTML };
-    })();
-    """
 
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: WebViewRepresentable

@@ -13,6 +13,7 @@
 //
 
 import Foundation
+import os
 import AppKit          // NSEvent (local monitor), NSApplication notifications
 import LocalAuthentication
 import Security
@@ -93,7 +94,7 @@ final class AppLockManager {
             // Onboarding performs a test auth and keeps the session unlocked for a smooth handoff.
             // Next-launch behavior is driven by requireOnNextLaunchAfterQuit + the pending flag.
             if DeveloperSettings.shared.verboseSecurityLogging {
-                print("AppLockManager: App Lock ENABLED (biometrics / password)")
+                Log.security.info("AppLockManager: App Lock enabled (biometrics / password)")
             }
             startOrStopInactivityMonitoring()
         } else {
@@ -101,7 +102,7 @@ final class AppLockManager {
             teardownInactivityMonitoring()
             resetSessionAuth()
             if DeveloperSettings.shared.verboseSecurityLogging {
-                print("AppLockManager: App Lock DISABLED")
+                Log.security.info("AppLockManager: App Lock disabled")
             }
         }
     }
@@ -133,7 +134,7 @@ final class AppLockManager {
             } else {
                 // Failure or cancel: do nothing (caller can show its own message if needed).
                 if DeveloperSettings.shared.verboseSecurityLogging {
-                    print("AppLockManager: Sensitive action blocked — authentication not completed.")
+                    Log.security.info("AppLockManager: sensitive action blocked — authentication not completed")
                 }
             }
         }
@@ -169,7 +170,7 @@ final class AppLockManager {
         // Any explicit lock should cause the next launch (if the app is quit while locked) to also require auth.
         UserDefaults.standard.set(true, forKey: pendingForceLockKey)
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("AppLockManager: App locked (manual or inactivity)")
+            Log.security.notice("AppLockManager: app locked (manual or inactivity)")
         }
     }
 
@@ -188,7 +189,7 @@ final class AppLockManager {
         // Clean any pending force flag.
         UserDefaults.standard.removeObject(forKey: pendingForceLockKey)
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("AppLockManager: App Lock disabled")
+            Log.security.notice("AppLockManager: App Lock disabled (removed)")
         }
     }
 
@@ -201,7 +202,7 @@ final class AppLockManager {
     func resetAllAppLockState() {
         disableAppLock()
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("AppLockManager: All app lock state reset via recovery")
+            Log.security.notice("AppLockManager: all App Lock state reset via recovery")
         }
     }
 
@@ -227,7 +228,7 @@ final class AppLockManager {
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &evalError) else {
             activeAuthContext = nil
             authorizationInProgress = false
-            print("AppLockManager: Biometric auth not available: \(evalError?.localizedDescription ?? "unknown")")
+            Log.security.error("AppLockManager: biometric auth not available: \(evalError?.localizedDescription ?? "unknown", privacy: .public)")
             completion(false)
             return
         }
@@ -254,12 +255,12 @@ final class AppLockManager {
                         self.recordActivity()
                         self.startOrStopInactivityMonitoring()
                         if DeveloperSettings.shared.verboseSecurityLogging {
-                            print("AppLockManager: Authenticated successfully via LocalAuthentication")
+                            Log.security.info("AppLockManager: authenticated successfully via LocalAuthentication")
                         }
                     }
                 } else {
                     if let err = error {
-                        print("AppLockManager: Authentication failed/cancelled: \(err.localizedDescription)")
+                        Log.security.info("AppLockManager: authentication failed/cancelled: \(err.localizedDescription, privacy: .public)")
                     }
                     completion(false)
                 }
@@ -375,7 +376,7 @@ final class AppLockManager {
 
         restartInactivityTimer()
         if DeveloperSettings.shared.verboseSecurityLogging {
-            print("AppLockManager: Inactivity monitoring started (\(inactivityLockMinutes) min)")
+            Log.security.info("AppLockManager: inactivity monitoring started (\(self.inactivityLockMinutes, privacy: .public) min)")
         }
     }
 
@@ -433,7 +434,7 @@ final class AppLockManager {
         if status == errSecSuccess {
             // There was legacy data — remove it.
             SecItemDelete(query as CFDictionary)
-            print("AppLockManager: Legacy PIN keychain item removed (migrated to LocalAuthentication).")
+            Log.security.info("AppLockManager: legacy PIN keychain item removed (migrated to LocalAuthentication)")
             // Also clean up any old length key that might be lying around.
             UserDefaults.standard.removeObject(forKey: "AppLock.PINLength")
         }

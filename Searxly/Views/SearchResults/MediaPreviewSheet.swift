@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import os
 import AppKit
 
 struct MediaPreviewSheet: View {
@@ -104,7 +105,7 @@ struct MediaPreviewSheet: View {
                 // Dev diagnostic (when you open preview from a blank grid tile under "Images"/"Videos").
                 let _ = {
                     if DeveloperSettings.shared.isEnabled, let u = previewCandidates.first {
-                        print("[Dev][MediaPreview] previewURL=\(u.absoluteString.prefix(110)) isVideo=\(isVideo)")
+                        Log.app.info("[Dev][MediaPreview] previewURL=\(u.absoluteString.prefix(110)) isVideo=\(isVideo)")
                     }
                 }()
 

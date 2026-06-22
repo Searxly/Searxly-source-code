@@ -22,6 +22,7 @@ struct EncryptionRecoveryView: View {
     @State private var showingBackupPasswordPrompt = false
     @State private var backupPassword = ""
     @State private var pendingBackupURL: URL?
+    @State private var showingStartFreshConfirm = false
 
     @State private var recoveryManager = EncryptionRecoveryManager.shared
 
@@ -99,6 +100,17 @@ struct EncryptionRecoveryView: View {
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 440)
+
+                Button(role: .destructive) {
+                    showingStartFreshConfirm = true
+                } label: {
+                    Text("Start fresh (erase local data)")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red.opacity(0.9))
+                .disabled(isWorking)
+                .padding(.top, 4)
             }
             .padding(32)
             .frame(maxWidth: 480)
@@ -119,6 +131,18 @@ struct EncryptionRecoveryView: View {
                     performBackupRestore()
                 }
             )
+        }
+        .confirmationDialog(
+            "Erase local data and start fresh?",
+            isPresented: $showingStartFreshConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Erase and Start Fresh", role: .destructive) {
+                startFresh()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes the encrypted data Searxly can't read — your history, bookmarks, saved SearXNG instances, open tabs, and browser settings. Your wallet and saved passwords are stored separately and are NOT affected. This cannot be undone.")
         }
     }
 
@@ -145,6 +169,13 @@ struct EncryptionRecoveryView: View {
         if !success {
             errorMessage = "That recovery code did not unlock your data. Check the code and try again, or restore from a backup."
         }
+        isWorking = false
+    }
+
+    private func startFresh() {
+        isWorking = true
+        errorMessage = nil
+        recoveryManager.startFresh()
         isWorking = false
     }
 

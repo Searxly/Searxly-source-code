@@ -17,6 +17,10 @@ struct PostProcessingContext: Equatable {
     let isToolFollowUp: Bool
     let isSuggestion: Bool
     let lowMemoryMode: Bool
+    /// When true, keep `[1]`, `[2]` citation markers (and a trailing sources section) intact.
+    /// Used by the cloud grounded path, which deliberately cites clickable sources. Defaults false
+    /// so the on-device "straight-to-the-point, no citations" behavior is unchanged everywhere else.
+    var preserveCitations: Bool = false
 
     // Convenience for common cases
     static let `default` = PostProcessingContext(
@@ -52,9 +56,12 @@ enum ResponsePostProcessor {
 
         // 1b. Aggressively strip any trailing "Sources / References / Bibliography" section
         // AND any citation markers like [1], [2], (1), 1., etc. The user wants straight-to-the-point
-        // answers with no citation style at all.
-        cleaned = stripTrailingSourcesSection(from: cleaned)
-        cleaned = stripCitationMarkers(from: cleaned)
+        // answers with no citation style at all — EXCEPT the cloud grounded path, which keeps [n]
+        // markers so they line up with the clickable source chips.
+        if !context.preserveCitations {
+            cleaned = stripTrailingSourcesSection(from: cleaned)
+            cleaned = stripCitationMarkers(from: cleaned)
+        }
 
         // 2. Fix common dry/technical/robotic starters (quality + naturalness)
         cleaned = fixDryStarters(cleaned, context: context)

@@ -258,7 +258,10 @@ final class WalletConnectManager {
 
         case "eth_signTypedData", "eth_signTypedData_v4":
             let json = typedDataJSON(reqParams) ?? ""
-            guard let pin = await bridge.requestApproval(.signTypedData(summary: typedSummary(json)), origin: origin) else {
+            let typedPreview = TypedDataPreview(json: json,
+                                                ownAddress: WalletManager.shared.address(forAccount: accountIndex),
+                                                activeChain: WalletManager.shared.activeChain)
+            guard let pin = await bridge.requestApproval(.signTypedData(typedPreview), origin: origin) else {
                 return await respondError(topic: sessionTopic, id: id, key: key, message: "User rejected")
             }
             if let sig = WalletManager.shared.dappSignTypedData(json: json, pin: pin, accountIndex: accountIndex) {
@@ -334,12 +337,6 @@ final class WalletConnectManager {
         for p in params { if let s = p as? String, !isAddress(s) { return s }
             if let o = p as? [String: Any], let d = try? JSONSerialization.data(withJSONObject: o) { return String(data: d, encoding: .utf8) } }
         return nil
-    }
-    private func typedSummary(_ json: String) -> String {
-        guard let d = json.data(using: .utf8), let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return "Typed data" }
-        let primary = (o["primaryType"] as? String) ?? "message"
-        let domain = (o["domain"] as? [String: Any])?["name"] as? String
-        return domain.map { "\($0) · \(primary)" } ?? primary
     }
     private func originHost(_ url: String) -> String {
         guard let u = URL(string: url), let h = u.host else { return url }

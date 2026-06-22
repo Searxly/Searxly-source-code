@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import os
 import SwiftUI
 import LocalAuthentication
 
@@ -384,7 +385,7 @@ struct OnboardingFlow: View {
                 } else {
                     self.appLockSetupError = "Authentication cancelled. You can try again or skip."
                     if let authError {
-                        print("Onboarding app lock auth failed: \(authError.localizedDescription)")
+                        Log.app.error("Onboarding app lock auth failed: \(authError.localizedDescription)")
                     }
                 }
             }

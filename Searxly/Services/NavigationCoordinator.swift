@@ -418,24 +418,8 @@ extension BrowserState {
             return
         }
 
-        // Extract readable content (same script as WebViewRepresentable for consistency)
-        let script = """
-        (function() {
-            let article = document.querySelector('article') || 
-                          document.querySelector('main') || 
-                          document.querySelector('.post-content') || 
-                          document.querySelector('#content') || 
-                          document.body;
-            const junkSelectors = ['script', 'style', 'nav', 'footer', 'aside', '.ad', '.ads', '.advertisement', '.sidebar', '#sidebar', '.comments'];
-            junkSelectors.forEach(sel => {
-                article.querySelectorAll(sel).forEach(el => el.remove());
-            });
-            const cleanHTML = article.innerHTML;
-            const title = document.title || '';
-            return { title, html: cleanHTML };
-        })();
-        """
-        wv.evaluateJavaScript(script) { [weak self] result, error in
+        // Extract readable content via the shared readability-lite extractor.
+        wv.evaluateJavaScript(ReaderExtraction.script) { [weak self] result, error in
             DispatchQueue.main.async {
                 guard let self else { return }
                 if let dict = result as? [String: Any],

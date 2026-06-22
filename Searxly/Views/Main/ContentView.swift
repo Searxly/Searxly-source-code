@@ -474,6 +474,10 @@ struct ContentView: View {
                     content: localAIChatView
                 )
             }
+            // Lightweight Siri-style quick answer (Explain / Summarize from page selection).
+            .overlay(alignment: .bottom) {
+                QuickAnswerPopup(browserState: browserState, glassEnabled: glassEnabled)
+            }
     }
 }
 

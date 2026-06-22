@@ -6,7 +6,7 @@
 //  - BIP-39 mnemonic (real, via BIP39.swift)
 //  - BIP-32/44 HD key derivation + secp256k1 + Keccak-256 → real Ethereum address
 //  - Seed phrase encrypted with PIN-derived AES-GCM key, stored in Keychain
-//  - PIN hash in UserDefaults (salt+SHA256)
+//  - PIN verified by decrypting the seed (its GCM tag is the verifier — no PIN hash on disk)
 //  - JSON-RPC balance fetching (eth_getBalance + ERC-20 balanceOf)
 //  - Price feeds (CoinGecko for ETH, DexScreener for SEARXLY)
 //
@@ -14,7 +14,6 @@
 import Foundation
 import CryptoKit
 import Observation
-import CommonCrypto
 import AppKit
 
 enum WalletUnlockState: Equatable {
@@ -527,7 +526,7 @@ final class WalletManager {
         // 2. Save encrypted seed in Keychain (PIN-encrypted)
         WalletKeychain.saveSeed(mnemonic, pin: pin)
 
-        // 3. PIN hash in UserDefaults
+        // 3. PIN setup (no verifier persisted — the seed's AES-GCM tag authenticates the PIN)
         setupPIN(pin)
         resetPINAttempts()
 
@@ -591,34 +590,48 @@ final class WalletManager {
     // MARK: - PIN / lock
 
     func setupPIN(_ pin: String) {
-        let salt = UUID().uuidString
-        UserDefaults.standard.set(salt, forKey: WalletConfig.Keys.pinSalt)
-        UserDefaults.standard.set(pinKDF(pin, salt: salt), forKey: WalletConfig.Keys.pinHash)
+        // No PIN verifier is persisted: the seed's AES-GCM auth tag authenticates the PIN (see
+        // verifyPIN), so there is nothing here for an attacker to brute-force offline. Shed any
+        // legacy plaintext hash a prior version may have written.
+        scrubLegacyPINVerifier()
     }
 
+    /// Re-keys the wallet from the current secret to a new one (and switches PIN ↔ passphrase mode).
+    /// Re-encrypts the seed + any imported keys under the new secret, then updates the verifier hash
+    /// LAST so a failure can't leave the verifier pointing at an unreadable seed. The recovery-code
+    /// copy is untouched (it isn't secret-derived), so a recovery code still restores the wallet.
+    @discardableResult
+    func changeSecret(current: String, new: String, newIsPassphrase: Bool) -> Bool {
+        guard verifyPIN(current), let words = WalletKeychain.loadSeed(pin: current) else { return false }
+        let imported = WalletKeychain.loadImportedKeys(pin: current)
+        guard WalletKeychain.saveSeed(words, pin: new),
+              WalletKeychain.loadSeed(pin: new) == words else { return false }   // round-trip before committing
+        if !imported.isEmpty { _ = WalletKeychain.saveImportedKeys(imported, pin: new) }
+        setupPIN(new)                                   // verifier now matches the new secret
+        WalletFeatures.usesPassphrase = newIsPassphrase
+        disableBiometricUnlock()                        // the stashed biometric secret is now stale
+        resetPINAttempts()
+        return true
+    }
+
+    /// Verifies the PIN by attempting to AES-GCM-decrypt the stored seed. The GCM auth tag IS the
+    /// verifier: a wrong PIN fails to decrypt. There is deliberately NO separate PIN hash to check.
+    ///
+    /// The previous design stored a PBKDF2 hash of the PIN in plaintext UserDefaults. That handed an
+    /// attacker who copied the prefs file (or a backup) an OFFLINE brute-force oracle for the 6-digit
+    /// PIN — defeating the whole point of the Secure-Enclave binding, which exists precisely so the
+    /// PIN can't be brute-forced offline. Verifying via decryption removes that oracle entirely.
     func verifyPIN(_ pin: String) -> Bool {
-        guard let salt = UserDefaults.standard.string(forKey: WalletConfig.Keys.pinSalt),
-              let stored = UserDefaults.standard.string(forKey: WalletConfig.Keys.pinHash)
-        else { return false }
-        if stored.hasPrefix("p2$") { return pinKDF(pin, salt: salt) == stored }
-        // Legacy fast-SHA256 PIN hash: a 6-digit PIN is brute-forceable from the stored hash in
-        // milliseconds, which would let an attacker with the prefs file shortcut the seed's PBKDF2.
-        // Verify the old way once, then transparently upgrade to the slow KDF below.
-        if sha256("\(salt)\(pin)") == stored { setupPIN(pin); return true }
-        return false
+        let ok = WalletKeychain.loadSeed(pin: pin) != nil
+        if ok { scrubLegacyPINVerifier() }   // retire any leftover plaintext oracle on first success
+        return ok
     }
 
-    /// PIN verifier hash: PBKDF2-SHA256 (same cost as the seed KDF) so brute-forcing a 6-digit PIN
-    /// from the stored hash is as expensive as attacking the seed itself — no weak link.
-    private func pinKDF(_ pin: String, salt: String) -> String {
-        let saltData = Data(salt.utf8)
-        var out = [UInt8](repeating: 0, count: 32)
-        saltData.withUnsafeBytes { sp in
-            _ = CCKeyDerivationPBKDF(CCPBKDFAlgorithm(kCCPBKDF2), pin, pin.utf8.count,
-                                     sp.bindMemory(to: UInt8.self).baseAddress, saltData.count,
-                                     CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), 200_000, &out, 32)
-        }
-        return "p2$" + out.map { String(format: "%02x", $0) }.joined()
+    /// Removes the legacy plaintext PIN verifier (hash + salt) from UserDefaults. New wallets never
+    /// write it; existing wallets shed it the first time the PIN is verified by seed decryption.
+    private func scrubLegacyPINVerifier() {
+        UserDefaults.standard.removeObject(forKey: WalletConfig.Keys.pinHash)
+        UserDefaults.standard.removeObject(forKey: WalletConfig.Keys.pinSalt)
     }
 
     func verifyRecoveryCode(_ code: String) -> Bool {

@@ -1,0 +1,24 @@
+[Unit]
+Description=Searxly AI gateway
+After=network.target
+
+[Service]
+# Paste your ROTATED io.net key (the old one is burned — revoke it first on ai.io.net).
+Environment=IONET_KEY=PASTE_ROTATED_IONET_KEY_HERE
+# 0x API key (token swaps). Free at https://dashboard.0x.org
+Environment=ZEROX_KEY=PASTE_0X_API_KEY_HERE
+# (Wallet history uses Blockscout, which is free + keyless — no explorer API key needed.)
+# A long random string. Generate with:  openssl rand -hex 32
+Environment=APP_TOKEN=PASTE_RANDOM_APP_TOKEN_HERE
+Environment=PORT=8787
+WorkingDirectory=/opt/searxly-gateway
+ExecStart=/usr/bin/node /opt/searxly-gateway/gateway.mjs
+Restart=always
+RestartSec=2
+User=www-data
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

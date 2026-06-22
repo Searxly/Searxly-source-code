@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import os
 import SwiftUI
 import WebKit
 
@@ -207,7 +208,7 @@ extension BrowserState {
                 }
             } catch {
                 canLoadMoreResults = false
-                print("SearXNG load-more error: \(error)")
+                Log.search.error("SearXNG load-more error: \(error)")
             }
             isLoadingMoreResults = false
         }
@@ -272,7 +273,7 @@ extension BrowserState {
             searchErrorMessage = error is SearXNGError
                 ? "No working private SearXNG instance reachable. Check Docker / your instance in Settings, or start the local one."
                 : "Search error: \(error.localizedDescription)"
-            print("SearXNG fetch error: \(error)")
+            Log.search.error("SearXNG fetch error: \(error)")
         }
         isLoadingSearch = false
         refreshKnowledgePanel()

@@ -11,6 +11,7 @@
 		BFA000030000000000000001 /* P256K in Frameworks */ = {isa = PBXBuildFile; productRef = BFA000020000000000000001 /* P256K */; };
 		BFA000050000000000000001 /* libsecp256k1 in Frameworks */ = {isa = PBXBuildFile; productRef = BFA000040000000000000001 /* libsecp256k1 */; };
 		BFB000030000000000000001 /* Bulwark in Frameworks */ = {isa = PBXBuildFile; productRef = BFB000020000000000000001 /* Bulwark */; };
+		BFC000030000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = BFC000020000000000000001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +79,7 @@
 				BFA000030000000000000001 /* P256K in Frameworks */,
 				BFA000050000000000000001 /* libsecp256k1 in Frameworks */,
 				BFB000030000000000000001 /* Bulwark in Frameworks */,
+				BFC000030000000000000001 /* Sparkle in Frameworks */,
 			);
 		};
 		BF1E144A2FE07FB70064DE5C /* Frameworks */ = {
@@ -133,6 +135,7 @@
 				BFA000020000000000000001 /* P256K */,
 				BFA000040000000000000001 /* libsecp256k1 */,
 				BFB000020000000000000001 /* Bulwark */,
+				BFC000020000000000000001 /* Sparkle */,
 			);
 			productName = Searxly;
 			productReference = BF13CDAE2FC3421E0081D8C8 /* Searxly.app */;
@@ -187,6 +190,7 @@
 			packageReferences = (
 				BFA000010000000000000001 /* XCRemoteSwiftPackageReference "secp256k1" */,
 				BFB000010000000000000001 /* XCRemoteSwiftPackageReference "bulwark" */,
+				BFC000010000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 110;
 			productRefGroup = BF13CDAF2FC3421E0081D8C8 /* Products */;
@@ -375,6 +379,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Sparkle-Info.plist";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Searxly uses Touch ID and your Mac login password to lock the browser and protect your private search data and settings.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -410,6 +415,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Sparkle-Info.plist";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Searxly uses Touch ID and your Mac login password to lock the browser and protect your private search data and settings.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -532,6 +538,14 @@
 				minimumVersion = 0.3.0;
 			};
 		};
+		BFC000010000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -549,6 +563,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = BFB000010000000000000001 /* XCRemoteSwiftPackageReference "bulwark" */;
 			productName = Bulwark;
+		};
+		BFC000020000000000000001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BFC000010000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

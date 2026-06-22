@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import os
 
 enum ResultSynthesizer {
 
@@ -29,7 +30,7 @@ enum ResultSynthesizer {
             // For synthesis we use a one-shot generate (no instructions override needed beyond the prompt itself).
             rawReply = try await provider.generate(prompt: prompt, instructions: nil)
         } catch {
-            print("[ResultSynthesizer] Generation failed: \(error)")
+            Log.ai.error("[ResultSynthesizer] Generation failed: \(error)")
             return nil
         }
 

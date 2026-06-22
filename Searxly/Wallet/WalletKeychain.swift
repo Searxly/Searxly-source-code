@@ -14,15 +14,21 @@
 //
 
 import Foundation
+import os
 import Security
 import CryptoKit
 import CommonCrypto
 import LocalAuthentication
 
-enum WalletKeychain {
+// `nonisolated`: the module defaults to MainActor isolation, but every operation here uses only
+// thread-safe Security / CryptoKit / Foundation APIs and is called from both MainActor (WalletManager)
+// and nonisolated (WalletConfig, networking) contexts. Opting the whole type out keeps it callable
+// from anywhere without actor hops.
+nonisolated enum WalletKeychain {
 
     private static let service = "com.myrhex.Searxly.wallet"
     private static let seedAccount = "wallet-seed"
+    private static let seedBoundAccount = "wallet-seed-se"            // Secure-Enclave-bound seed copy
     private static let recoverySeedAccount = "wallet-recovery-seed"
     private static let saltAccount = "wallet-kdf-salt"
     private static let biometricPINAccount = "wallet-biometric-pin"
@@ -35,6 +41,8 @@ enum WalletKeychain {
     private static let siteAccountsAccount = "wallet-site-accounts"
     private static let rotationAccountsAccount = "wallet-rotation-accounts"
     private static let importedKeysAccount = "wallet-imported-keys"
+    private static let importedKeysBoundAccount = "wallet-imported-keys-se"   // SE-bound imported-keys copy
+    private static let seBindingKeyTag = "com.myrhex.Searxly.wallet.se-binding".data(using: .utf8)!
     private static let contactsAccount = "wallet-contacts"
     private static let portfolioHistoryAccount = "wallet-portfolio-history"
 
@@ -47,11 +55,13 @@ enum WalletKeychain {
         guard let phraseData = words.joined(separator: " ").data(using: .utf8) else { return false }
         let key = deriveKey(from: pin, salt: loadOrCreateSalt())
         guard let encrypted = try? encryptAES(phraseData, key: key) else { return false }
-        return saveItem(encrypted, account: seedAccount)
+        // Wrap the PIN-encrypted blob to the Secure Enclave so the 6-digit PIN can't be brute-forced
+        // OFFLINE from an extracted keychain copy. Falls back to an unbound store if SE is unavailable.
+        return storeCiphertextBound(encrypted, unbound: seedAccount, bound: seedBoundAccount)
     }
 
     static func loadSeed(pin: String) -> [String]? {
-        guard let encrypted = loadItem(account: seedAccount) else { return nil }
+        guard let encrypted = loadCiphertext(unbound: seedAccount, bound: seedBoundAccount) else { return nil }
         if let salt = loadSalt() {
             return decryptSeed(encrypted, secret: pin, salt: salt)
         }
@@ -81,10 +91,12 @@ enum WalletKeychain {
 
     static func deleteSeed() {
         // Wipe every wallet keychain item so nothing lingers after a delete.
-        [seedAccount, recoverySeedAccount, saltAccount, biometricPINAccount,
+        [seedAccount, seedBoundAccount, recoverySeedAccount, saltAccount, biometricPINAccount,
          connectedSitesAccount, addressAccount, activityAccount,
          accountsAccount, siteAccountsAccount, rotationAccountsAccount, importedKeysAccount,
-         contactsAccount, portfolioHistoryAccount, zeroExKeyAccount, basescanKeyAccount].forEach(deleteItem)
+         importedKeysBoundAccount, contactsAccount, portfolioHistoryAccount,
+         zeroExKeyAccount, basescanKeyAccount].forEach(deleteItem)
+        deleteSecureEnclaveKey()   // drop the device-binding key so nothing lingers after a delete
     }
 
     // MARK: - Address book (saved recipient contacts — who you pay is private)
@@ -136,11 +148,11 @@ enum WalletKeychain {
         guard let json = try? JSONSerialization.data(withJSONObject: map) else { return false }
         let key = deriveKey(from: pin, salt: loadOrCreateSalt())
         guard let encrypted = try? encryptAES(json, key: key) else { return false }
-        return saveItem(encrypted, account: importedKeysAccount)
+        return storeCiphertextBound(encrypted, unbound: importedKeysAccount, bound: importedKeysBoundAccount)
     }
 
     static func loadImportedKeys(pin: String) -> [Int: Data] {
-        guard let encrypted = loadItem(account: importedKeysAccount), let salt = loadSalt(),
+        guard let encrypted = loadCiphertext(unbound: importedKeysAccount, bound: importedKeysBoundAccount), let salt = loadSalt(),
               let decrypted = try? decryptAES(encrypted, key: deriveKey(from: pin, salt: salt)),
               let map = try? JSONSerialization.jsonObject(with: decrypted) as? [String: String] else { return [:] }
         var result = [Int: Data]()
@@ -281,7 +293,12 @@ enum WalletKeychain {
             kSecReturnData as String: true,
         ]
         if let context { query[kSecUseAuthenticationContext as String] = context }
-        else { query[kSecUseOperationPrompt as String] = "Unlock your Searxly wallet" }
+        else {
+            // kSecUseOperationPrompt is deprecated; supply the prompt via an LAContext instead.
+            let ctx = LAContext()
+            ctx.localizedReason = "Unlock your Searxly wallet"
+            query[kSecUseAuthenticationContext as String] = ctx
+        }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let data = item as? Data else { return nil }
@@ -337,41 +354,233 @@ enum WalletKeychain {
         try AES.GCM.open(try AES.GCM.SealedBox(combined: ciphertext), using: SymmetricKey(data: key))
     }
 
+    // MARK: - Secure Enclave device binding
+    //
+    // The PIN-encrypted seed (and imported keys) are additionally wrapped to a NON-EXTRACTABLE Secure
+    // Enclave key. This defeats the realistic attack on a short PIN: an attacker who extracts the
+    // keychain blob can't brute-force the 6-digit PIN OFFLINE, because the wrapped blob can only be
+    // unwrapped on THIS device's Secure Enclave. (It does not stop live malware already running on the
+    // unlocked device — that's what the optional passphrase is for.)
+    //
+    // Deliberately layered & safe:
+    //  • The recovery-code copy is NEVER bound, so a recovery code still restores the wallet on a NEW
+    //    device. The recovery code is high-entropy, so it isn't brute-forceable anyway.
+    //  • Everything is best-effort: if the Enclave is unavailable or any op fails, we store/read the
+    //    UNBOUND blob exactly as before — a wallet is never lost to SE issues.
+    //  • Before deleting the unbound (brute-forceable) copy, we round-trip the bound copy, so we never
+    //    commit a blob we can't read back.
+
+    /// Whether this device can create Secure-Enclave-backed keys (Apple Silicon / T2 Macs). When this
+    /// is false, the seed can only be wrapped under the PIN-derived key with NO device binding, so a
+    /// short PIN becomes the sole barrier and is brute-forceable offline from an extracted blob — setup
+    /// should then require a high-entropy passphrase instead of a 6-digit PIN. Probed once with an
+    /// ephemeral (non-persistent) key so it has no side effects.
+    static let isSecureEnclaveAvailable: Bool = {
+        guard let access = SecAccessControlCreateWithFlags(
+            nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .privateKeyUsage, nil) else { return false }
+        let attrs: [String: Any] = [
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeySizeInBits as String: 256,
+            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
+            kSecPrivateKeyAttrs as String: [
+                kSecAttrIsPermanent as String: false,   // ephemeral — pure capability probe, never stored
+                kSecAttrAccessControl as String: access,
+            ],
+        ]
+        var error: Unmanaged<CFError>?
+        return SecKeyCreateRandomKey(attrs as CFDictionary, &error) != nil
+    }()
+
+    /// Loads (or creates once) the device's Secure-Enclave binding key. nil when SE is unavailable
+    /// (older hardware / unusual signing) — callers then fall back to unbound storage.
+    private static func secureEnclaveKey() -> SecKey? {
+        let lookup: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: seBindingKeyTag,
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecReturnRef as String: true,
+            kSecUseDataProtectionKeychain as String: true,
+        ]
+        var existing: CFTypeRef?
+        if SecItemCopyMatching(lookup as CFDictionary, &existing) == errSecSuccess, let key = existing {
+            return (key as! SecKey)
+        }
+        guard let access = SecAccessControlCreateWithFlags(
+            nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .privateKeyUsage, nil) else { return nil }
+        let attrs: [String: Any] = [
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeySizeInBits as String: 256,
+            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
+            kSecUseDataProtectionKeychain as String: true,
+            kSecPrivateKeyAttrs as String: [
+                kSecAttrIsPermanent as String: true,
+                kSecAttrApplicationTag as String: seBindingKeyTag,
+                kSecAttrAccessControl as String: access,
+            ],
+        ]
+        var error: Unmanaged<CFError>?
+        return SecKeyCreateRandomKey(attrs as CFDictionary, &error)
+    }
+
+    private static func deleteSecureEnclaveKey() {
+        SecItemDelete([
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: seBindingKeyTag,
+            kSecUseDataProtectionKeychain as String: true,
+        ] as CFDictionary)
+    }
+
+    private static let seAlgorithm: SecKeyAlgorithm = .eciesEncryptionCofactorX963SHA256AESGCM
+
+    /// Wraps data to the Enclave key's public key (ECIES). nil if SE unavailable/unsupported.
+    private static func seWrap(_ data: Data) -> Data? {
+        guard let priv = secureEnclaveKey(), let pub = SecKeyCopyPublicKey(priv),
+              SecKeyIsAlgorithmSupported(pub, .encrypt, seAlgorithm) else { return nil }
+        var error: Unmanaged<CFError>?
+        return SecKeyCreateEncryptedData(pub, seAlgorithm, data as CFData, &error) as Data?
+    }
+
+    /// Unwraps data with the Enclave private key. nil if SE unavailable or the blob wasn't wrapped here.
+    private static func seUnwrap(_ data: Data) -> Data? {
+        guard let priv = secureEnclaveKey(),
+              SecKeyIsAlgorithmSupported(priv, .decrypt, seAlgorithm) else { return nil }
+        var error: Unmanaged<CFError>?
+        return SecKeyCreateDecryptedData(priv, seAlgorithm, data as CFData, &error) as Data?
+    }
+
+    /// Stores a PIN-encrypted blob, preferring the Enclave-bound form. Only deletes the unbound copy
+    /// after the bound copy round-trips, so we can never lock the user out via a write we can't read.
+    @discardableResult
+    private static func storeCiphertextBound(_ ciphertext: Data, unbound: String, bound: String) -> Bool {
+        if let wrapped = seWrap(ciphertext), let check = seUnwrap(wrapped), check == ciphertext,
+           saveItem(wrapped, account: bound) {
+            deleteItem(unbound)
+            Log.security.debug("WalletKeychain: Secure Enclave binding active for \(bound, privacy: .public)")
+            return true
+        }
+        // SE unavailable / failed → behave exactly as before (unbound). Clear any stale bound copy.
+        deleteItem(bound)
+        Log.security.debug("WalletKeychain: Secure Enclave binding unavailable — storing \(unbound, privacy: .public) unbound")
+        return saveItem(ciphertext, account: unbound)
+    }
+
+    /// Reads a PIN-encrypted blob, preferring the Enclave-bound copy and transparently migrating any
+    /// legacy unbound copy into the bound form (no PIN needed — it wraps the already-encrypted blob).
+    private static func loadCiphertext(unbound: String, bound: String) -> Data? {
+        if let boundBlob = loadItem(account: bound) {
+            if let ct = seUnwrap(boundBlob) { return ct }
+            // Bound copy present but the Enclave couldn't unwrap it (SE changed/unavailable). Use any
+            // remaining unbound copy; otherwise this PIN copy is unreadable → user restores via recovery code.
+            return loadItem(account: unbound)
+        }
+        if let unboundBlob = loadItem(account: unbound) {
+            storeCiphertextBound(unboundBlob, unbound: unbound, bound: bound)   // upgrade in place
+            return unboundBlob
+        }
+        return nil
+    }
+
     // MARK: - Keychain primitives
+    //
+    // We use the **data-protection keychain** (kSecUseDataProtectionKeychain) rather than the legacy
+    // file-based keychain. The legacy keychain gates access by a per-item ACL tied to the app's code
+    // SIGNATURE, so development/ad-hoc builds (whose signature changes every rebuild) trigger a macOS
+    // "Searxly wants to use your confidential information…" prompt for EACH item, every launch —
+    // i.e. the popup spam. The data-protection keychain instead scopes items to the sandboxed app's
+    // own access group, so there is no per-signature ACL prompt at all.
+    //
+    // We probe availability once (some signing setups lack the entitlement); if unavailable we fall
+    // back to the legacy keychain so behavior never regresses. Existing legacy items are migrated to
+    // the data-protection keychain transparently on first read (a one-time prompt at most, then never
+    // again).
+
+    /// Whether the data-protection keychain is usable for this signed build (probed once).
+    private static let useDataProtection: Bool = probeDataProtectionKeychain()
+
+    private static func baseQuery(account: String, dataProtection: Bool) -> [String: Any] {
+        var q: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        if dataProtection { q[kSecUseDataProtectionKeychain as String] = true }
+        return q
+    }
 
     @discardableResult
     private static func saveItem(_ data: Data, account: String) -> Bool {
         deleteItem(account)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            kSecAttrSynchronizable as String: false,
-        ]
+        var query = baseQuery(account: account, dataProtection: useDataProtection)
+        query[kSecValueData as String] = data
+        query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        query[kSecAttrSynchronizable as String] = false
         return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
     }
 
     private static func loadItem(account: String) -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
+        if useDataProtection {
+            if let data = rawLoad(account: account, dataProtection: true) { return data }
+            // Not in the data-protection keychain yet — migrate any legacy copy (one-time).
+            if let legacy = rawLoad(account: account, dataProtection: false) {
+                migrateToDataProtection(legacy, account: account)
+                return legacy
+            }
+            return nil
+        }
+        return rawLoad(account: account, dataProtection: false)
+    }
+
+    private static func rawLoad(account: String, dataProtection: Bool) -> Data? {
+        var query = baseQuery(account: account, dataProtection: dataProtection)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
         return result as? Data
     }
 
+    /// Copies a legacy item into the data-protection keychain, then removes the legacy copy so it
+    /// never triggers a signature-ACL prompt again.
+    private static func migrateToDataProtection(_ data: Data, account: String) {
+        var add = baseQuery(account: account, dataProtection: true)
+        add[kSecValueData as String] = data
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        add[kSecAttrSynchronizable as String] = false
+        let status = SecItemAdd(add as CFDictionary, nil)
+        if status == errSecSuccess || status == errSecDuplicateItem {
+            SecItemDelete(baseQuery(account: account, dataProtection: false) as CFDictionary)
+        }
+    }
+
     private static func deleteItem(_ account: String) {
-        let query: [String: Any] = [
+        // Remove from both keychains so a delete is total (also clears any un-migrated legacy copy).
+        if useDataProtection {
+            SecItemDelete(baseQuery(account: account, dataProtection: true) as CFDictionary)
+        }
+        SecItemDelete(baseQuery(account: account, dataProtection: false) as CFDictionary)
+    }
+
+    /// One-time capability check: try to add (then remove) a throwaway item to the data-protection
+    /// keychain. Adding the app's own item never prompts. Returns false (→ legacy keychain) if the
+    /// build lacks the entitlement, so we never break saving on unusual signing setups.
+    private static func probeDataProtectionKeychain() -> Bool {
+        let probeAccount = "wallet-dp-capability-probe"
+        let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: probeAccount,
+            kSecUseDataProtectionKeychain as String: true,
         ]
-        SecItemDelete(query as CFDictionary)
+        SecItemDelete(base as CFDictionary)
+        var add = base
+        add[kSecValueData as String] = Data([0x01])
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        let status = SecItemAdd(add as CFDictionary, nil)
+        if status == errSecSuccess {
+            SecItemDelete(base as CFDictionary)
+            return true
+        }
+        Log.security.debug("WalletKeychain: data-protection keychain unavailable (OSStatus \(status, privacy: .public)); using legacy keychain")
+        return false
     }
 }

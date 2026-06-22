@@ -400,17 +400,19 @@ private struct WalletLockView: View {
                 }
                 Text("Wallet Locked")
                     .font(.system(size: 19, weight: .semibold))
-                Text("Enter your 6-digit PIN")
+                Text(WalletFeatures.usesPassphrase ? "Enter your passphrase" : "Enter your 6-digit PIN")
                     .font(.system(size: 12))
                     .foregroundStyle(WalletTheme.textTertiary)
             }
 
-            HStack(spacing: 12) {
-                ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
-                    Circle()
-                        .fill(i < pin.count ? Color.white : WalletTheme.surfaceStrong)
-                        .frame(width: 12, height: 12)
-                        .animation(.spring(response: 0.18), value: pin.count)
+            if !WalletFeatures.usesPassphrase {
+                HStack(spacing: 12) {
+                    ForEach(0..<WalletConfig.pinLength, id: \.self) { i in
+                        Circle()
+                            .fill(i < pin.count ? Color.white : WalletTheme.surfaceStrong)
+                            .frame(width: 12, height: 12)
+                            .animation(.spring(response: 0.18), value: pin.count)
+                    }
                 }
             }
 
@@ -425,8 +427,8 @@ private struct WalletLockView: View {
                 }
             } else if showError {
                 Text(wallet.pinAttemptsRemaining <= 2
-                     ? "Incorrect PIN · \(wallet.pinAttemptsRemaining) attempt\(wallet.pinAttemptsRemaining == 1 ? "" : "s") left"
-                     : "Incorrect PIN")
+                     ? "Incorrect · \(wallet.pinAttemptsRemaining) attempt\(wallet.pinAttemptsRemaining == 1 ? "" : "s") left"
+                     : "Incorrect")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(WalletTheme.negative)
                     .transition(.opacity)
@@ -689,6 +691,13 @@ struct PINKeypad: View {
     @Binding var pin: String
     let maxLength: Int
     let onComplete: () -> Void
+    /// Forces passphrase (true) or PIN (false) mode regardless of the saved wallet setting — used by the
+    /// setup / change-secret flows where the user is *choosing* the mode. nil → use the saved setting.
+    var passphraseOverride: Bool? = nil
+
+    @State private var reveal = false
+
+    private var usesPassphrase: Bool { passphraseOverride ?? WalletFeatures.usesPassphrase }
 
     private let keys: [[String]] = [
         ["1","2","3"],
@@ -698,6 +707,45 @@ struct PINKeypad: View {
     ]
 
     var body: some View {
+        if usesPassphrase { passphraseField } else { digitGrid }
+    }
+
+    private var passphraseField: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Group {
+                    if reveal { TextField("Passphrase", text: $pin) }
+                    else { SecureField("Passphrase", text: $pin) }
+                }
+                .textFieldStyle(.plain)
+                .font(.system(size: 15, design: .monospaced))
+                .foregroundStyle(.white)
+                .autocorrectionDisabled()
+                .onSubmit { if !pin.isEmpty { onComplete() } }
+
+                Button { reveal.toggle() } label: {
+                    Image(systemName: reveal ? "eye.slash" : "eye")
+                        .font(.system(size: 13)).foregroundStyle(Color(white: 0.5))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .background(WalletTheme.surfaceStrong, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+            Button { if !pin.isEmpty { onComplete() } } label: {
+                Text("Continue")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(pin.isEmpty ? Color(white: 0.5) : .black)
+                    .frame(maxWidth: .infinity).padding(.vertical, 11)
+                    .background(pin.isEmpty ? WalletTheme.surfaceStrong : Color.white,
+                                in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(pin.isEmpty)
+        }
+    }
+
+    private var digitGrid: some View {
         VStack(spacing: 10) {
             ForEach(keys, id: \.self) { row in
                 HStack(spacing: 10) {

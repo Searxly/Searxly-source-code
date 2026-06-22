@@ -19,6 +19,7 @@ struct WalletSettingsSection: View {
     @State private var wcProjectId = ""
     @State private var wcURI = ""
 
+    @State private var showChangeSecret = false
     // Biometric enable flow
     @State private var showBiometricSetup = false
     @State private var biometricPIN = ""
@@ -179,9 +180,22 @@ struct WalletSettingsSection: View {
                         }
                         .toggleStyle(.switch)
                     } else {
-                        Text("Biometrics are unavailable on this Mac. The wallet uses your 6-digit PIN.")
+                        Text("Biometrics are unavailable on this Mac. The wallet uses your \(WalletFeatures.usesPassphrase ? "passphrase" : "6-digit PIN").")
                             .font(.system(size: 12)).foregroundStyle(.secondary)
                     }
+
+                    // Change the unlock secret — and switch between a 6-digit PIN and a stronger passphrase.
+                    Button {
+                        showChangeSecret = true
+                    } label: {
+                        Label("Change PIN / passphrase", systemImage: "lock.rotation")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    Text("A passphrase is far harder to brute-force than a 6-digit PIN. Your recovery phrase is unaffected.")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Toggle(isOn: $dappProvider) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -359,17 +373,19 @@ struct WalletSettingsSection: View {
                     .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
                 featureToggle($incomingAlerts, "Notify on received funds", "Local alert when an address receives — no new data leaves your device")
-                featureToggle($fullHistory, "Full transaction history", "Incoming + outgoing via Basescan")
-                featureToggle($tokenDiscovery, "Auto-discover tokens", "Detects tokens you hold via Basescan")
+                featureToggle($fullHistory, "Full transaction history", "Incoming + outgoing transaction history")
+                featureToggle($tokenDiscovery, "Auto-discover tokens", "Detects tokens you hold")
                 featureToggle($ens, "ENS (.eth) name resolution", "Resolves .eth names via Ethereum mainnet")
                 featureToggle($swaps, "Swaps", "In-wallet token swaps via the 0x API")
                 featureToggle($buy, "Buy crypto", "Card on-ramp widget (Onramper)")
 
                 if fullHistory || tokenDiscovery {
-                    apiKeyField("Basescan API key (optional, raises limits)", text: $basescanKey)
+                    apiKeyField("Etherscan API key (optional — not required)", text: $basescanKey)
                 }
                 if swaps {
-                    apiKeyField("0x API key (required for swaps)", text: $zeroExKey)
+                    apiKeyField(SearxlyGateway.isConfigured
+                                ? "0x API key (optional — Searxly provides one)"
+                                : "0x API key (required for swaps)", text: $zeroExKey)
                 }
 
                 // Default gas speed
@@ -449,6 +465,9 @@ struct WalletSettingsSection: View {
         }
         .sheet(isPresented: $showRevealPhrase) {
             RevealRecoveryPhraseSheet(onClose: { showRevealPhrase = false })
+        }
+        .sheet(isPresented: $showChangeSecret) {
+            ChangeSecretSheet()
         }
         .sheet(isPresented: $showApprovals) {
             WalletApprovalsSheet(onClose: { showApprovals = false })

@@ -155,6 +155,11 @@ final class BrowserState {
     // MARK: - Local AI (sheet + onboarding prompt; logic in SearchCoordinator)
     var showingLocalAIChat: Bool = false
     var showEnableAIToolsPrompt = false
+    /// A pending "Ask Searxly AI" request from the page right-click menu (selection → chat seed).
+    /// Consumed by the chat sheet when it appears (or live, if already open).
+    var pendingAIChatSeed: AIChatSeed? = nil
+    /// A pending lightweight quick answer (Explain / Summarize) shown in the Siri-style popup.
+    var quickAnswer: QuickAnswerRequest? = nil
 
     // MARK: - Instances (Phase 8)
     var searxInstances: [SearXNGInstance] = SearXNGInstance.defaultInstances
@@ -247,6 +252,63 @@ final class BrowserState {
     init() {
         // Load will be called explicitly from ContentView.onAppear (mirrors old behavior)
         // so that @AppStorage values are available before we force onboarding etc.
+
+        // Listen for "Ask Searxly AI" picks from the page right-click menu (SearxlyWebView).
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAskAISelectionNote(_:)),
+            name: .searxlyAskAISelection,
+            object: nil
+        )
+    }
+
+    @objc func handleAskAISelectionNote(_ note: Notification) {
+        let text = (note.userInfo?["text"] as? String) ?? ""
+        let actionRaw = (note.userInfo?["action"] as? String) ?? AIChatSeed.Action.ask.rawValue
+        let title = (note.userInfo?["title"] as? String) ?? ""
+        let url = (note.userInfo?["url"] as? String) ?? ""
+        DispatchQueue.main.async { [weak self] in
+            self?.handleAskAISelection(text: text, actionRaw: actionRaw, title: title, url: url)
+        }
+    }
+
+    /// Routes a page-menu request: "Ask" opens the full chat; "Explain"/"Summarize"/"Summarize page"
+    /// use the lightweight Siri-style quick-answer popup instead.
+    func handleAskAISelection(text: String, actionRaw: String, title: String = "", url: String = "") {
+        let action = AIChatSeed.Action(rawValue: actionRaw) ?? .ask
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // PRIVACY: never ship Private-tab page content to the cloud backend. Show a notice instead.
+        let prefs = LocalIntelligenceManager.shared.preferences
+        let cloudActive = prefs.searxlyAIEnabled && prefs.useSearxlyAI
+        if (selectedTab?.isPrivate ?? false) && cloudActive {
+            quickAnswer = QuickAnswerRequest(
+                selection: "",
+                action: action,
+                staticNotice: "Searxly AI Cloud is paused in Private tabs so your private browsing never leaves your Mac. Switch to on‑device AI in Settings, or use a normal tab."
+            )
+            return
+        }
+
+        switch action {
+        case .ask:
+            guard !trimmed.isEmpty else { return }
+            pendingAIChatSeed = AIChatSeed(selection: String(trimmed.prefix(4000)), action: .ask)
+            openLocalAIChat()
+        case .explain, .summarize:
+            guard !trimmed.isEmpty else { return }
+            quickAnswer = QuickAnswerRequest(selection: String(trimmed.prefix(4000)), action: action)
+            LocalIntelligenceManager.shared.warmUpIfNeeded()
+        case .summarizePage:
+            // Page text is untrusted + can be large; PageContentGuard sanitizes/caps before the model.
+            quickAnswer = QuickAnswerRequest(
+                selection: String(trimmed.prefix(16000)),
+                action: .summarizePage,
+                pageTitle: title.isEmpty ? nil : title,
+                pageURL: url.isEmpty ? nil : url
+            )
+            LocalIntelligenceManager.shared.warmUpIfNeeded()
+        }
     }
 
     @objc func handleHistoryTitleSnapshot(_ note: Notification) {
@@ -259,6 +321,7 @@ final class BrowserState {
 
     deinit {
         NotificationCenter.default.removeObserver(self, name: Self.historyTitleSnapshotNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .searxlyAskAISelection, object: nil)
     }
 }
 

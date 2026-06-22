@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os
 
 /// Thin wrapper around NSXPCConnection to SearxlyDockerHelper.
 /// Lazy-connects on first use and auto-reconnects after invalidation or interruption.
@@ -38,7 +39,7 @@ final class DockerHelperClient {
             connection = c
         }
         let errorHandler: (Error) -> Void = { [weak self] error in
-            print("DockerHelperClient: XPC message failed — \(error.localizedDescription)")
+            Log.docker.error("DockerHelperClient: XPC message failed — \(error.localizedDescription)")
             Task { @MainActor [weak self] in self?.connection = nil }
         }
         return connection?.remoteObjectProxyWithErrorHandler(errorHandler) as? SearxlyDockerHelperProtocol
