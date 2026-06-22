@@ -138,7 +138,6 @@ enum KeychainManager {
         guard let keyData = loadKey() else {
             return nil
         }
-        // Audit event (persisted): the action is logged, never the key itself.
         Log.security.notice("KeychainManager: encryption recovery key was exported (can decrypt all user data)")
         return keyData.base64EncodedString()
     }

@@ -399,7 +399,6 @@ enum Persistence {
         }
         if current.bookmarks.count != before {
             save(current)
-            // Host is user data — redacted in release.
             Log.privacy.info("Persistence: cleared bookmarks matching host \(matchingHost)")
         }
     }

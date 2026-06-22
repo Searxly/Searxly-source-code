@@ -2,30 +2,18 @@
 //  DAppApprovalPreviews.swift
 //  Searxly
 //
-//  The human-readable previews shown on the dApp approval sheet — the security-critical surface
-//  that lets a user see what they're actually signing/sending before they approve it.
-//
-//  Extracted from WalletProviderBridge.swift so this pure, dependency-light logic can be unit-tested
-//  in isolation (see SecurityBoundaryTests/, which symlinks this file). A bug here means a user could
-//  be shown benign-looking text for a malicious request — so it gets dedicated known-answer tests.
-//
 
 import Foundation
 
-// MARK: - EIP-712 decoded preview
-//
-// Re-walks the typed-data structure (in the order declared by `types`) to produce flat, human-readable
-// field lines, so the approval sheet can show exactly what's being signed. Detects max-uint256 values
-// (flags them "UNLIMITED") and the signer's own address, and surfaces the domain chainId so a request
-// scoped to a different chain than the wallet is sitting on can be flagged.
-
+// Flattens an EIP-712 message into human-readable lines for the approval sheet, flagging max-uint256
+// values as "UNLIMITED", the signer's own address, and a domain chainId that differs from the wallet's.
 struct TypedDataPreview {
     struct Line: Identifiable {
         let id = UUID()
         let indent: Int
         let label: String
         let value: String
-        let flag: String?      // "UNLIMITED", or a soft note like "your address"
+        let flag: String?
     }
 
     let domainName: String?
@@ -47,7 +35,6 @@ struct TypedDataPreview {
         chainMismatch = (cid != nil && cid != activeChain.id)
         activeChainName = activeChain.name
 
-        // Normalize the type table to [typeName: [(name, type)]].
         var types: [String: [(name: String, type: String)]] = [:]
         for (k, v) in (obj["types"] as? [String: Any]) ?? [:] {
             let fields = (v as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
@@ -75,7 +62,7 @@ struct TypedDataPreview {
             }
         }
         walk(primary, message, indent: 0)
-        // Fallback when the `types` table doesn't describe the message: show raw keys so nothing is hidden.
+        // Show raw keys if the type table doesn't describe the message, so nothing is hidden.
         if collected.isEmpty {
             for (k, v) in message { collected.append(Line(indent: 0, label: k, value: String(describing: v), flag: nil)) }
         }
@@ -89,7 +76,6 @@ struct TypedDataPreview {
         return nil
     }
 
-    /// Formats one EIP-712 leaf value, returning (display text, optional warning flag).
     private static func format(type: String, value: Any?, ownAddress: String?) -> (String, String?) {
         if type.hasSuffix("]") {
             let count = (value as? [Any])?.count ?? 0
@@ -135,7 +121,6 @@ struct TypedDataPreview {
     }
 }
 
-/// Human-readable preview of a dApp `eth_sendTransaction`.
 struct TxPreview {
     let to: String
     let valueHex: String?
@@ -151,7 +136,6 @@ struct TxPreview {
         return String(format: "%.6f", eth)
     }
 
-    /// Decodes common ERC-20 calldata into plain language. nil for unknown/empty data.
     var decoded: String? {
         guard let dataHex, dataHex.count >= 10 else { return nil }
         let selector = String(dataHex.dropFirst(2).prefix(8)).lowercased()
@@ -169,8 +153,7 @@ struct TxPreview {
 
     var isUnlimitedApproval: Bool {
         guard isApproval, let dataHex else { return false }
-        // approve(spender, amount): amount is the last 32-byte word; all-f = unlimited.
-        let amount = String(dataHex.suffix(64)).lowercased()
+        let amount = String(dataHex.suffix(64)).lowercased()   // approve(spender, amount): last word, all-f = unlimited
         return amount == String(repeating: "f", count: 64)
     }
 }

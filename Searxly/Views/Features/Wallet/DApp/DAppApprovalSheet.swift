@@ -465,9 +465,7 @@ struct DAppApprovalSheet: View {
         }
     }
 
-    /// `accessibilityValueOverride` lets a row read its FULL value to VoiceOver even when the visible
-    /// text is abbreviated — critical for the recipient address, where a hidden middle could disguise
-    /// where funds are going.
+    /// `accessibilityValueOverride` reads the full value to VoiceOver when the visible text is abbreviated.
     private func detailRow(_ label: String, value: String, mono: Bool = false,
                            accessibilityValueOverride: String? = nil) -> some View {
         HStack {

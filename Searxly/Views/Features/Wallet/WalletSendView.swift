@@ -645,8 +645,6 @@ struct WalletSendView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        // Read the FULL value to VoiceOver (the visible address is abbreviated) so the user can verify
-        // exactly where funds are going before authorizing.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(accessibilityValueOverride ?? value)

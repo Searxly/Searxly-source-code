@@ -1,17 +1,7 @@
 name: CI
 
-# Searxly CI.
-#
-# The full macOS app target intentionally does NOT build from this public repo — the app entry point,
-# ad-block engine, and VPN are kept private (see README "What's omitted"), so `xcodebuild` would fail on
-# missing files. Instead we run the two SELF-CONTAINED Swift Package test suites, which symlink the real
-# production sources and therefore validate the highest-risk code on every push WITHOUT needing the app:
-#
-#   • Wallet crypto known-answer tests — BIP-39/32, secp256k1, EIP-712/1559, Keccak, address validation.
-#   • Security-boundary tests          — the dApp approval previews (what a user sees before signing/
-#                                         sending) and the prompt-injection guard for "summarize page".
-#
-# A regression in either of these is exactly the kind that loses funds or leaks data, so they gate merges.
+# Runs the self-contained SPM known-answer suites (wallet crypto + security boundary). The full app
+# target isn't built here — the entry point, ad-block, and VPN are private (see README).
 
 on:
   push:
@@ -34,7 +24,6 @@ jobs:
       - name: Swift toolchain
         run: swift --version
 
-      # Cache resolved/built SwiftPM artifacts (secp256k1, Bulwark) to keep runs fast.
       - name: Cache SwiftPM
         uses: actions/cache@v4
         with:

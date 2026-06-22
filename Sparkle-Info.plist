@@ -2,17 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Sparkle auto-update. This is the PUBLIC key (safe to ship); the matching private key lives
-	     ONLY in your login Keychain and never ships in the app. -->
 	<key>SUPublicEDKey</key>
 	<string>Ux3FWPU98QvA5heMYRYMd+yREYF+tgWSyAczgXFbH1w=</string>
-
-	<!-- TODO: point this at your hosted appcast feed (must be HTTPS). GitHub Releases is the easiest
-	     host — e.g. https://github.com/<you>/<repo>/releases/latest/download/appcast.xml -->
 	<key>SUFeedURL</key>
 	<string>https://searxly.app/appcast.xml</string>
-
-	<!-- Searxly is sandboxed, so Sparkle runs its installer through a bundled XPC service. -->
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 </dict>

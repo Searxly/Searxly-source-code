@@ -1,30 +1,6 @@
-// Searxly gateway
-//
-// A tiny, dependency-free proxy that sits between the Searxly app and the third-party services it
-// needs a secret key for. The app talks to THIS server; this server is the ONLY place those keys
-// live. Nothing secret ever ships inside the app.
-//
-// Routes (all require Authorization: Bearer <APP_TOKEN>):
-//   POST /v1/chat/completions   → io.net (Searxly AI). OpenAI-compatible; streamed back unchanged.
-//   GET  /wallet/0x/swap/...     → api.0x.org   (token swap quotes). Injects the 0x key.
-//   GET  /wallet/etherscan?...   → Blockscout   (wallet history / token discovery), keyless & free.
-//                                  Picks the chain's Blockscout host from the `chainid` query param,
-//                                  so no paid explorer API key is ever needed.
-//   GET  /health                 → liveness probe (no auth).
-//
-// The wallet routes are deliberately NOT open proxies: each one allowlists the upstream paths/modules
-// the app actually uses, so a leaked APP_TOKEN can't turn our keys into a free general-purpose proxy.
-//
-// Env vars (set in the systemd unit, NOT in code):
-//   IONET_KEY     - rotated io.net key (required for /v1/chat/completions). Never ships in the app.
-//   ZEROX_KEY     - 0x API key (required for /wallet/0x). https://dashboard.0x.org
-//                   (/wallet/etherscan needs no key — it uses Blockscout, which is free + keyless.)
-//   APP_TOKEN     - a long random string the app must send as "Authorization: Bearer <APP_TOKEN>".
-//                   Soft gate against casual abuse + lets you rotate without rebuilding the app.
-//   RATE_LIMIT    - max requests per IP per hour across all routes (default 120).
-//   PORT          - local port to listen on (default 8787). Keep it behind Caddy/HTTPS; do not expose.
-//
-// Requires Node 18+ (uses global fetch + Readable.fromWeb).
+// Searxly gateway — a small proxy that holds the secret keys (io.net, 0x) server-side so the app
+// never ships them. Each route allowlists its upstream paths so a leaked APP_TOKEN can't be turned
+// into a general-purpose proxy. Env: IONET_KEY, ZEROX_KEY, APP_TOKEN, RATE_LIMIT, PORT. Node 18+.
 
 import http from 'node:http';
 import { Readable } from 'node:stream';
@@ -37,8 +13,7 @@ const PORT      = Number(process.env.PORT || 8787);
 const IONET_UPSTREAM = 'https://api.intelligence.io.solutions/api/v1/chat/completions';
 const ZEROX_UPSTREAM = 'https://api.0x.org';
 
-// Free, keyless, Etherscan-compatible explorers per chain (chainid → host). Used by /wallet/etherscan
-// so wallet history / token discovery need no paid API key. Add chains here as the wallet gains them.
+// Free, keyless, Etherscan-compatible explorers per chain (chainid → host).
 const BLOCKSCOUT_HOSTS = {
   '8453':  'https://base.blockscout.com',     // Base
   '1':     'https://eth.blockscout.com',      // Ethereum
@@ -47,11 +22,10 @@ const BLOCKSCOUT_HOSTS = {
   '137':   'https://polygon.blockscout.com',  // Polygon
 };
 
-const MAX_BODY  = 256 * 1024;                          // 256 KB request cap (AI route)
-const LIMIT     = Number(process.env.RATE_LIMIT || 120); // requests per window, per IP, across routes
-const WINDOW_MS = 60 * 60 * 1000;                     // 1 hour
+const MAX_BODY  = 256 * 1024;
+const LIMIT     = Number(process.env.RATE_LIMIT || 120);
+const WINDOW_MS = 60 * 60 * 1000;
 
-// Very small in-memory per-IP rate limit. (Per-user free-prompt limits come later via the wallet.)
 const hits = new Map();
 function rateLimited(ip) {
   const now = Date.now();
@@ -71,7 +45,6 @@ function sendJSON(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-// Stream an upstream fetch() Response straight back to the client, unchanged.
 function pipeThrough(res, upstream) {
   res.writeHead(upstream.status, {
     'content-type': upstream.headers.get('content-type') || 'application/json',
@@ -88,7 +61,6 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, 200, { ok: true });
   }
 
-  // Shared soft gate for every real route.
   if (APP_TOKEN) {
     const auth = req.headers['authorization'] || '';
     if (auth !== `Bearer ${APP_TOKEN}`) {
@@ -96,7 +68,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // Shared per-IP rate limit.
   if (rateLimited(clientIP(req))) {
     return sendJSON(res, 429, { error: { message: 'Too many requests. Please wait and try again.' } });
   }
@@ -117,13 +88,11 @@ const server = http.createServer(async (req, res) => {
   return sendJSON(res, 404, { error: { message: 'not found' } });
 });
 
-// MARK: - Searxly AI (io.net), OpenAI-compatible, streamed.
 async function handleAI(req, res) {
   if (!IONET_KEY) {
     return sendJSON(res, 500, { error: { message: 'Searxly AI is not configured.' } });
   }
 
-  // Read the request body (capped).
   let size = 0;
   const chunks = [];
   try {
@@ -149,14 +118,12 @@ async function handleAI(req, res) {
   }
 }
 
-// MARK: - 0x Swap API. /wallet/0x/<rest> → https://api.0x.org/<rest>, with our key attached.
 async function handleZeroEx(res, url, path) {
   if (!ZEROX_KEY) {
     return sendJSON(res, 500, { error: { message: 'Swaps are not configured.' } });
   }
   const rest = path.slice('/wallet/0x/'.length);
-  // Allowlist: only the swap endpoints the app uses — never an open proxy to api.0x.org on our key.
-  if (!rest.startsWith('swap/')) {
+  if (!rest.startsWith('swap/')) {   // allowlist: swap endpoints only
     return sendJSON(res, 403, { error: { message: 'forbidden path' } });
   }
   const upstreamURL = `${ZEROX_UPSTREAM}/${rest}${url.search}`;
@@ -171,21 +138,17 @@ async function handleZeroEx(res, url, path) {
   }
 }
 
-// MARK: - Wallet history. /wallet/etherscan?... → the chain's free Blockscout (Etherscan-compatible).
 async function handleEtherscan(res, url) {
   const params = url.searchParams;
-  // Allowlist the modules the app uses (history/token discovery = account, approvals = logs).
   const moduleName = params.get('module') || '';
-  if (moduleName !== 'account' && moduleName !== 'logs') {
+  if (moduleName !== 'account' && moduleName !== 'logs') {   // allowlist: history + approvals only
     return sendJSON(res, 403, { error: { message: 'forbidden module' } });
   }
-  // The app's `chainid` selects which chain's explorer to hit. Unknown chains degrade to an
-  // empty-but-valid Etherscan-style result so the app just shows no history (rather than an error).
   const host = BLOCKSCOUT_HOSTS[params.get('chainid') || '8453'];
   if (!host) {
     return sendJSON(res, 200, { status: '0', message: 'Chain not supported', result: [] });
   }
-  params.delete('apikey');   // Blockscout is keyless — drop any stray key param
+  params.delete('apikey');
   const upstreamURL = `${host}/api?${params.toString()}`;
   try {
     const upstream = await fetch(upstreamURL, {

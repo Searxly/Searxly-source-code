@@ -1,5 +1,3 @@
-# Replace with the subdomain you point at this server's IP (A record).
-# Caddy automatically gets + renews a free HTTPS certificate for it.
 gateway.searxly.app {
     reverse_proxy 127.0.0.1:8787
 }

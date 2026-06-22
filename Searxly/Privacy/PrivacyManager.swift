@@ -465,7 +465,6 @@ final class PrivacyManager {
         // P5: if RAG was using history, drop the in-memory index so the next retrieve/chat can't
         // surface items the user just asked to forget. Rebuild will happen on next use if RAG still enabled.
         LocalIntelligenceManager.shared.clearRAGIndex()
-        // The exact cutoff date is user data — leave it redacted in release.
         Log.privacy.info("PrivacyManager: history cleared (since: \(since?.description ?? "all time"))")
     }
 
@@ -534,7 +533,6 @@ final class PrivacyManager {
 
         // 3. Clear standard web data (best effort for the domain)
         clearStandardWebData {
-            // The forgotten host is user browsing data — redacted in release.
             Log.privacy.info("PrivacyManager: forget-domain completed for \(normalizedHost)")
             NotificationCenter.default.post(name: Self.standardWebDataClearedNotification, object: nil)
             completion?()
