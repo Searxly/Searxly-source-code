@@ -136,9 +136,8 @@ final class HelperService: NSObject, SearxlyHelperProtocol {
         let logURL = stateDir.appendingPathComponent("tor.log")
         try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
 
-        // Generate the torrc. SOCKS5 on localhost is what onion tabs proxy through; ClientOnly means
-        // we never act as a relay; notice log → stdout (we capture it to tor.log for the bootstrap
-        // parser). GeoIP files are optional (Tor still works without them; they only aid path choice).
+        // torrc: SOCKS5 + control port on localhost, ClientOnly (never a relay), notice log to stdout
+        // (captured to tor.log for the bootstrap parser). GeoIP files optional.
         var torrc = """
         SocksPort \(socksHost()):\(socksPort) IsolateDestAddr IsolateDestPort
         ControlPort \(socksHost()):\(Self.controlPort)
@@ -170,8 +169,7 @@ final class HelperService: NSObject, SearxlyHelperProtocol {
         env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
         process.environment = env
 
-        // Truncate the previous log so the bootstrap parser only ever sees the current run, then
-        // capture stdout+stderr into it (single writer — torrc logs to stdout).
+        // Truncate + capture stdout/stderr to tor.log (single writer — torrc logs to stdout).
         FileManager.default.createFile(atPath: logURL.path, contents: nil)
         if let logHandle = try? FileHandle(forWritingTo: logURL) {
             process.standardOutput = logHandle
@@ -438,11 +436,10 @@ final class HelperService: NSObject, SearxlyHelperProtocol {
     }
 }
 
-// MARK: - Tor control-protocol client (blocking, localhost)
+// MARK: - Tor control-protocol client (blocking POSIX socket, localhost)
 
-/// Minimal synchronous client for Tor's ControlPort. Runs only in the unsandboxed helper, which can
-/// read the control auth cookie. Best-effort: returns nil on any failure (callers fall back). Uses a
-/// plain blocking POSIX socket — exchanges are tiny and localhost-only, with recv/send timeouts.
+/// Cookie-authenticated client for Tor's ControlPort, in the unsandboxed helper. Best-effort:
+/// returns nil on any failure (callers fall back).
 private enum TorControl {
 
     static func exchange(host: String, port: UInt16, cookiePath: String, commands: [String]) -> [String]? {

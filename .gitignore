@@ -86,9 +86,9 @@ Searxly/ContentSafety/
 Secrets.xcconfig
 *.secret.xcconfig
 *.secrets.xcconfig
-# Any locally-filled gateway unit (the committed searxly-gateway.service has placeholders only)
-gateway/*.local
-gateway/.env
+# Gateway deploy config (Caddyfile, systemd unit, deploy guide) lives in a private ops repo,
+# not the public source. Kept locally for deployment, never tracked.
+gateway/
 # Apple signing / provisioning material
 *.p12
 *.cer

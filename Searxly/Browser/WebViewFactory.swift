@@ -194,14 +194,9 @@ struct WebViewFactory {
             // nominally "Private" tab.
 
         case .onion:
-            // Onion tab: a fresh non-persistent data store (like Private) whose traffic is routed
-            // through the bundled Tor client's local SOCKS5 endpoint. SOCKS5h semantics mean the
-            // hostname — including .onion — is resolved at the proxy, so .onion services become
-            // reachable and there is no DNS leak.
-            //
-            // NOTE: Tor must be bootstrapped before navigations are issued into this view. The
-            // routing path (BrowserState.openOnionURL) awaits TorManager.ensureReadyAndRunning()
-            // before loading the URL.
+            // Onion tab: non-persistent store, traffic routed through Tor's local SOCKS5. SOCKS5h
+            // resolves the hostname (incl. .onion) at the proxy, so onions work with no DNS leak.
+            // Tor must be bootstrapped first — openOnionURL awaits ensureReadyAndRunning() before loading.
             let onionStore = WKWebsiteDataStore.nonPersistent()
             let endpoint = NWEndpoint.hostPort(
                 host: NWEndpoint.Host(TorRuntimeConfig.socksHost),
@@ -217,10 +212,8 @@ struct WebViewFactory {
                                          forMainFrameOnly: false)
             configuration.userContentController.addUserScript(hardening)
 
-            // Uniform user agent: deliberately leave applicationNameForUserAgent UNSET so onion tabs
-            // send the default Safari-like UA with no "Searxly"/"Private" suffix that would single
-            // them out. (Honest scope: this reduces — not eliminates — fingerprinting; not Tor Browser.)
-
+            // Leave applicationNameForUserAgent unset so onion tabs send the default Safari-like UA
+            // with no "Searxly"/"Private" suffix that would single them out.
             let webView = SearxlyWebView(frame: .zero, configuration: configuration)
             return webView
         }
